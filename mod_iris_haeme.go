@@ -227,7 +227,7 @@ func getIPFSConfig() IPFSConfig {
 //change the site settings, such as theme, name and description
 func iSetSite(ctx iris.Context) {
 	if !checkLogin(ctx) {
-		return
+		ctx.Redirect("/")
 	}
 	accountname := SESS_GetAccountName(ctx)
 	//ctx.ViewData("Account", accountname)
@@ -318,7 +318,7 @@ func iBlog(ctx iris.Context) {
 func iView(ctx iris.Context) {
 	//View the page content with 2 parameters.
 	if !checkLogin(ctx) {
-		//	return
+		ctx.Redirect("/")
 	}
 
 	hash := ctx.FormValue("hash")

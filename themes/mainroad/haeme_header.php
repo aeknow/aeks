@@ -12,9 +12,6 @@
 	</div>
 		
 <nav class="menu">
-	<button class="menu__btn" aria-haspopup="true" aria-expanded="false" tabindex="0">
-		<span class="menu__btn-title" tabindex="-1">Menu</span>
-	</button>
 	<ul class="menu__list">
 		<li class="menu__item">
 			<a class="menu__link" href="/view?pubkey={{.Site.Pubkey}}&viewtype=author">
