@@ -879,15 +879,13 @@ func ViewContent(ctx iris.Context, hash, pubkey, dbpath, myaid string) {
 	aid, err := strconv.Atoi(myaid)
 
 	querystr := "SELECT title,author,keywords,aid,abstract,filetype,pubtime,authorname,tags,lasthash,lastmodtime,filesize,signature,body FROM aek WHERE hash='" + hash + "' and aid=" + myaid
-	fmt.Println(querystr)
+	//fmt.Println(querystr)
 	rows, err := db.Query(querystr)
 	checkError(err)
 
 	var title string
 	var author string
 	var keywords string
-	//var aid, hash string
-	//var aid int
 	var abstract sql.NullString
 	var filetype sql.NullString
 	var pubtime string
@@ -947,13 +945,6 @@ func ViewContent(ctx iris.Context, hash, pubkey, dbpath, myaid string) {
 			checkError(err)
 		}
 		bodystr, _ := base64.StdEncoding.DecodeString(pageinfo.Body)
-		//extensions := parser.CommonExtensions | parser.AutoHeadingIDs
-		//parser := parser.NewWithExtensions(extensions)
-
-		//md := []byte("markdown text")
-		//html := markdown.ToHTML(bodystr, parser, nil)
-		//pageinfo.Body = string(bodystr)
-		html := bodystr
 
 		db, err := sql.Open("sqlite", "./data/accounts/"+accountname+"/logs.db")
 		sql_check := "SELECT hash FROM logs WHERE hash='" + hash + "'"
@@ -976,7 +967,7 @@ func ViewContent(ctx iris.Context, hash, pubkey, dbpath, myaid string) {
 
 		//myPage := PageBlog{AuthorLink: AuthorLink, PubTime: pubtime, TagsLink: TagsLink, PreLink: PreLink, NextLink: NextLink, Account: accountname, PageTitle: title, PageContent: template.HTML(pageinfo.Body), PageTags: keywords, EditPath: author, LastHash: lasthash}
 
-		myPage := PageBlog{AuthorLink: AuthorLink, PubTime: pubtime, TagsLink: TagsLink, CatgoriesLink: CatgoriesLink, PreLink: PreLink, NextLink: NextLink, Account: accountname, PageTitle: title, PageContent: template.HTML(string(html)), EditPath: author, LastHash: lasthash, AllCatgoriesLink: template.HTML(GetAllCategoriesLink(pubkey)), AllTagsLink: template.HTML(GetAllTagsLink(pubkey)), LastTenLink: template.HTML(GetLastTenLinks(pubkey)), PageAid: myaid, PageHash: hash, PageDescription: abstract.String, SigStatus: sigStatus, PageSignature: signature}
+		myPage := PageBlog{AuthorLink: AuthorLink, PubTime: pubtime, TagsLink: TagsLink, CatgoriesLink: CatgoriesLink, PreLink: PreLink, NextLink: NextLink, Account: accountname, PageTitle: title, PageContent: template.HTML(string(bodystr)), EditPath: author, LastHash: lasthash, AllCatgoriesLink: template.HTML(GetAllCategoriesLink(pubkey)), AllTagsLink: template.HTML(GetAllTagsLink(pubkey)), LastTenLink: template.HTML(GetLastTenLinks(pubkey)), PageAid: myaid, PageHash: hash, PageDescription: abstract.String, SigStatus: sigStatus, PageSignature: signature}
 		myPage.Site = GetSiteInfo(pubkey)
 		myPage.PageAuthorname = authorname
 		myPage.PageAuthor = pubkey
@@ -1794,8 +1785,6 @@ func GetAENSData(ctx iris.Context) {
 	}
 
 	redirecturl := "/view?pubkey=" + theAccount + "&viewtype=author"
-	//ctx.HTML("<html><head><meta http-equiv=\"refresh\" content=\"3; url=" + redirecturl + "\"/></head><body>Resolving AENS..." + aensname + "</body></html>")
-	//ctx.Writef("Getting...")
 	theIPFS := ""
 	if myPagedata.IPNSAddress != "" {
 		ipnsurl := MyNodeConfig.IPFSNode + "/ipns/" + myPagedata.IPNSAddress

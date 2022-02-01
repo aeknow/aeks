@@ -23,7 +23,6 @@ import (
 	"strings"
 	"time"
 
-	//_ "github.com/mattn/go-sqlite"
 	_ "modernc.org/sqlite"
 
 	//"time"
@@ -80,12 +79,6 @@ var aecommands = map[string]string{
 	"windows": "cmd /c start",
 	"darwin":  "open",
 	"linux":   "xdg-open",
-}
-
-type PageData struct {
-	PageId      int
-	PageContent template.HTML
-	PageTitle   string
 }
 
 type PageReg struct {
@@ -1269,7 +1262,7 @@ func DB_GetSiteConfigs(pubkey string) SiteConfig {
 	GetConfig.AuthorDescription = pubkey
 	GetConfig.Description = "This is the default new site, ready to build my knowledge base!"
 	GetConfig.Title = "New Start"
-	GetConfig.Subtitle = "A new step to the knowledge ocean."
+	GetConfig.Subtitle = "A new step to the knowledge blockchain."
 	GetConfig.Pubkey = pubkey
 
 	for rows.Next() {
