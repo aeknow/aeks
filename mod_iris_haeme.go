@@ -39,6 +39,7 @@ import (
 	"github.com/kataras/iris/v12"
 
 	"github.com/aeternity/aepp-sdk-go/v9/account"
+	"github.com/aeternity/aepp-sdk-go/v9/naet"
 )
 
 type PageBlog struct {
@@ -901,7 +902,7 @@ func ViewContent(ctx iris.Context, hash, pubkey, dbpath, myaid string) {
 	db.Close()
 
 	if len(title) > 0 { //View page and Save to logs
-		MyNodeConfig := DB_GetConfigs(pubkey)
+		MyNodeConfig := DB_GetConfigs()
 
 		myTime, err := strconv.ParseInt(pubtime, 10, 64)
 		logtime := strconv.FormatInt(time.Now().Unix(), 10)
@@ -1364,7 +1365,7 @@ func iSaveBlog(ctx iris.Context) {
 	body := html.EscapeString(content)
 	description = html.EscapeString(description)
 
-	MyNodeConfig := DB_GetConfigs(accountname)
+	MyNodeConfig := DB_GetConfigs()
 	sh := shell.NewShell(MyNodeConfig.IPFSAPI)
 
 	dbpath := "./data/accounts/" + accountname + "/public.db"
@@ -1407,6 +1408,7 @@ func iSaveBlog(ctx iris.Context) {
 
 	db.Close()
 
+	//add new database to ipfs
 	pubfile, err := os.Open(dbpath)
 	if err != nil {
 		fmt.Print("Failed openfile", err)
@@ -1522,7 +1524,7 @@ func iEditBlog(ctx iris.Context) {
 
 	db.Close()
 	fmt.Println(dbpath, hash)
-	MyNodeConfig := DB_GetConfigs(accountname)
+	MyNodeConfig := DB_GetConfigs()
 	sh := shell.NewShell(MyNodeConfig.IPFSAPI)
 	rc, err := sh.Cat("/ipfs/" + hash)
 	ipfsstr, err := copyToString(rc)
@@ -1573,8 +1575,7 @@ func iBlogUploadFile(ctx iris.Context) {
 
 	io.Copy(out, file)
 
-	accountname := SESS_GetAccountName(ctx)
-	MyNodeConfig := DB_GetConfigs(accountname)
+	MyNodeConfig := DB_GetConfigs()
 
 	sh := shell.NewShell(MyNodeConfig.IPFSAPI)
 	myfile := ".\\uploads\\" + fname
@@ -1620,7 +1621,7 @@ func iGoAENS(ctx iris.Context) {
 	aensname := ctx.URLParam("aensname")
 	refresh := ctx.URLParam("refresh")
 	gohome := ctx.URLParam("gohome")
-	MyNodeConfig := DB_GetConfigs(accountname)
+	MyNodeConfig := DB_GetConfigs()
 	//Go home firstly
 	if gohome == "gohome" {
 		//ctx.Redirect(MyNodeConfig.IPFSNode + "/ipfs/" + DB_GetConfigItem(accountname, "LastIPFS"))
@@ -1715,12 +1716,12 @@ func iGoAENS(ctx iris.Context) {
 	ctx.HTML("No IPFS or IPNS pointer,AENS info:<br/>" + str)
 }
 
-func GetAENSData(ctx iris.Context) {
+func AENS_GetData(ctx iris.Context) {
 
 	accountname := SESS_GetAccountName(ctx)
 	aensname := ctx.URLParam("aensname")
 
-	MyNodeConfig := DB_GetConfigs(accountname)
+	MyNodeConfig := DB_GetConfigs()
 
 	//Do normal AENS resolve
 	fmt.Println("Start Resolve")
@@ -1784,10 +1785,13 @@ func GetAENSData(ctx iris.Context) {
 
 	}
 
-	redirecturl := "/view?pubkey=" + theAccount + "&viewtype=author"
 	theIPFS := ""
+	theIPNS := ""
+	theBlock_height := ""
+
 	if myPagedata.IPNSAddress != "" {
 		ipnsurl := MyNodeConfig.IPFSNode + "/ipns/" + myPagedata.IPNSAddress
+		theIPNS = myPagedata.IPNSAddress
 		str = httpGet(ipnsurl)
 		fmt.Println(str)
 		err = json.Unmarshal([]byte(str), &reposites)
@@ -1798,43 +1802,254 @@ func GetAENSData(ctx iris.Context) {
 		for i = 0; i < len(reposites.Reposites); i++ {
 			if reposites.Reposites[i].Name == aensname {
 				theIPFS = reposites.Reposites[i].Hash
+				theBlock_height = reposites.Reposites[i].Metainfo
 			}
 		}
 
 	} else {
 		if myPagedata.IPFSAddress != "" {
 			theIPFS = myPagedata.IPFSAddress
+			theBlock_height = "0"
 		}
 	}
-	fileUrl := MyNodeConfig.IPFSNode + "/" + "ipfs/" + theIPFS
-	fmt.Println(theAccount + "=>" + theIPFS)
-	// Get the data
-	resp, err := http.Get(fileUrl)
-	if err != nil {
-		panic(err)
-	}
-	defer resp.Body.Close()
 
-	// 创建一个文件用于保存
-	filename := "./data/accounts/" + theAccount + "/public.db"
-	filedir := "./data/accounts/" + theAccount
-	if !FileExist(filedir) {
-		os.Mkdir(filedir, 0755)
-	}
-	//filename := "./data/accounts/" + theAccount + ".db"
-	out, err := os.Create(filename)
-	if err != nil {
-		panic(err)
-	}
-	defer out.Close()
+	if AENS_needUpdate(aensname, theIPFS, theBlock_height) {
+		fileUrl := MyNodeConfig.IPFSNode + "/" + "ipfs/" + theIPFS
+		//fmt.Println(theAccount + "=>" + theIPFS)
+		// Get the data
+		resp, err := http.Get(fileUrl)
+		if err != nil {
+			panic(err)
+		}
+		defer resp.Body.Close()
 
-	// 然后将响应流和文件流对接起来
-	_, err = io.Copy(out, resp.Body)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("Got data from " + aensname)
+		// 创建一个文件用于保存
+		filename := "./data/accounts/" + theAccount + "/public.db"
+		filedir := "./data/accounts/" + theAccount
+		if !FileExist(filedir) {
+			os.Mkdir(filedir, 0755)
+		}
+		//filename := "./data/accounts/" + theAccount + ".db"
+		out, err := os.Create(filename)
+		if err != nil {
+			panic(err)
+		}
+		defer out.Close()
 
+		// 然后将响应流和文件流对接起来
+		_, err = io.Copy(out, resp.Body)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println("Update data from " + aensname)
+
+		AENS_UpdateOnce(aensname, theIPNS, theIPFS, accountname, theBlock_height)
+	}
+
+	redirecturl := "/view?pubkey=" + theAccount + "&viewtype=author"
 	ctx.Redirect(redirecturl)
 
+}
+
+func AENS_needUpdate(aensname, ipfs, block_height string) bool {
+
+	if ipfs == "" {
+		return false
+	}
+
+	dbpath := "./data/aens.db"
+	db, err := sql.Open("sqlite", dbpath)
+	checkError(err)
+	sql_check := "SELECT ipfs,block_height FROM aens WHERE aensname='" + aensname + "' ORDER BY aid DESC LIMIT 1"
+	fmt.Println(sql_check)
+	rows, err := db.Query(sql_check)
+	checkError(err)
+	NeedUpdate := true
+	old_ipfs := ""
+	old_block_height := ""
+
+	for rows.Next() {
+		err = rows.Scan(&old_ipfs, &old_block_height)
+		fmt.Println(old_ipfs, old_block_height)
+		if old_ipfs == ipfs {
+			NeedUpdate = false
+		} else {
+			if block_height > old_block_height {
+				NeedUpdate = true
+			}
+		}
+	}
+
+	db.Close()
+
+	return NeedUpdate
+
+}
+
+func AENS_UpdateOnce(aensname, ipns, ipfs, accountname, block_height string) {
+	if ipfs == "" {
+
+		fmt.Println("err: NULL IPFS")
+		return
+	}
+	dbpath := "./data/aens.db"
+	db, err := sql.Open("sqlite", dbpath)
+	checkError(err)
+
+	MyNodeConfig := DB_GetConfigs()
+	node := naet.NewNode(MyNodeConfig.PublicNode, false)
+	new_block_height, err := node.GetHeight()
+
+	sql_insert := "INSERT INTO aens(aensname,ipns,ipfs,block_height) VALUES('" + aensname + "','" + ipns + "','" + ipfs + "','" + strconv.FormatUint(new_block_height, 10) + "')"
+	fmt.Println(sql_insert)
+	_, err = db.Exec(sql_insert)
+	checkError(err)
+
+	db.Close()
+}
+
+func AENS_UpdateALLOnce(ctx iris.Context) {
+	dbpath := "./data/aens.db"
+	db, err := sql.Open("sqlite", dbpath)
+	checkError(err)
+
+	sql_check := "SELECT DISTINCT(aensname) FROM aens;"
+	rows, err := db.Query(sql_check)
+	checkError(err)
+
+	aensname := ""
+	sql_insert := ""
+	for rows.Next() {
+		err = rows.Scan(&aensname)
+		MyNodeConfig := DB_GetConfigs()
+
+		//Do normal AENS resolve
+		fmt.Println("Start Resolve")
+		myurl := MyNodeConfig.PublicNode + "/v2/names/" + aensname
+		str := httpGet(myurl)
+		fmt.Println(myurl)
+
+		var s AENSInfo
+		var reposites Reposite
+		err := json.Unmarshal([]byte(str), &s)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		var myPagedata PageUpdateAENS
+
+		myPagedata.NameID = s.ID
+		myPagedata.NameTTL = s.TTL
+		myPagedata.NameJson = template.HTML(str)
+		myPagedata.AENSName = aensname
+		//myPagedata.Account = accountname
+
+		theAccount := s.OWNER
+
+		myPointers := s.Pointers
+
+		var i int
+		theIPFS := ""
+		theIPNS := ""
+		theAENS := ""
+		theBlock_height := ""
+
+		for i = 0; i < len(myPointers); i++ {
+			if myPointers[i].Key == "account_pubkey" {
+				myPagedata.AEAddress = myPointers[i].ID
+				theAccount = myPointers[i].ID
+				fmt.Println(theAccount)
+			}
+			if myPointers[i].ID == "ch_ipfsD1iUfRLdnJjQMEczjSzzphPbNnSQudnqUAe1vPJetmMK9" {
+				myPagedata.IPFSAddress = myPointers[i].Key
+			}
+			if myPointers[i].ID == "ch_ipnsoMiJmYq1joKGXFtLRDrSJ3mUjapNB7gcPud7mmpVUXssM" {
+				myPagedata.IPNSAddress = myPointers[i].Key
+			}
+			if myPointers[i].Key == "contract_pubkey" {
+				myPagedata.ContractAddress = myPointers[i].ID
+			}
+			if myPointers[i].Key == "oracle_pubkey" {
+				myPagedata.OracleAddress = myPointers[i].ID
+			}
+			if myPointers[i].ID == "ch_btcqM2NycfJaeLYhYY9uPGKj98iVkwL9VLw7ZP5WzzWHHj2sP" {
+				myPagedata.BTCAddress = myPointers[i].Key
+			}
+			if myPointers[i].ID == "ch_ethe795mCkWMAkguuc3ay9k2JSMikZ61L6VfEMDrujEwCiaiB" {
+				myPagedata.ETHAddress = myPointers[i].Key
+			}
+
+			if myPointers[i].ID == "ch_em3io3Ntov4qJ1y9mDoyQgHTaWBnBZd1CBu7wnH6iyuF5jf5m" {
+				myPagedata.EmailAddress = myPointers[i].Key
+			}
+
+			if myPointers[i].ID == "ch_webcVNwKZujeYcxDMjAH5ZUPNwCdcFL4QgYD34pFHZi6KEnzS" {
+				myPagedata.WebAddress = myPointers[i].Key
+			}
+
+		}
+
+		if myPagedata.IPNSAddress != "" {
+			ipnsurl := MyNodeConfig.IPFSNode + "/ipns/" + myPagedata.IPNSAddress
+			theIPNS = myPagedata.IPNSAddress
+			str = httpGet(ipnsurl)
+			fmt.Println(str)
+			err = json.Unmarshal([]byte(str), &reposites)
+			if err != nil {
+				fmt.Println(err)
+			}
+
+			//Update N reposites?
+			for i = 0; i < len(reposites.Reposites); i++ {
+				//if reposites.Reposites[i].Name == aensname {
+				theIPFS = reposites.Reposites[i].Hash
+				theBlock_height = reposites.Reposites[i].Metainfo
+				theAENS = reposites.Reposites[i].Name
+
+				sql_check := "SELECT ipfs,block_height FROM aens WHERE aensname='" + theAENS + "' ORDER BY aid DESC LIMIT 1"
+				fmt.Println(sql_check)
+				rows1, err := db.Query(sql_check)
+				checkError(err)
+				NeedUpdate := true
+				old_ipfs := ""
+				old_block_height := ""
+
+				for rows1.Next() {
+					err = rows1.Scan(&old_ipfs, &old_block_height)
+					fmt.Println(old_ipfs, old_block_height)
+					if old_ipfs == theIPFS {
+						NeedUpdate = false
+					} else {
+						if theBlock_height > old_block_height {
+							NeedUpdate = true
+						}
+					}
+				}
+
+				if theIPFS == "" {
+					NeedUpdate = false
+				}
+
+				if NeedUpdate {
+					sql_insert = sql_insert + "INSERT INTO aens(aensname,ipns,ipfs,block_height) VALUES('" + theAENS + "','" + theIPNS + "','" + theIPFS + "','" + theBlock_height + "');\n"
+					//fmt.Println(sql_insert)
+					//_, err = db.Exec(sql_insert)
+					//checkError(err)
+				}
+				//}
+			}
+
+		}
+
+	}
+
+	db.Close()
+
+	//insert databases
+	db, err = sql.Open("sqlite", dbpath)
+	checkError(err)
+	fmt.Println(sql_insert)
+	_, err = db.Exec(sql_insert)
+	checkError(err)
+	db.Close()
 }

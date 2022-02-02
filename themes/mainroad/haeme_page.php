@@ -78,7 +78,7 @@
                                         //  htmlDecode : true,  // Enable / disable HTML tag encode.
                                         tocContainer: "#custom-toc-container", // 自定义 ToC 容器层
                                         tex: true,
-                                        // htmlDecode : "style,script,iframe",  // Note: If enabled, you should filter some dangerous HTML tags for website security.
+                                        htmlDecode : "style,script,iframe",  // Note: If enabled, you should filter some dangerous HTML tags for website security.
                                     });
 
 

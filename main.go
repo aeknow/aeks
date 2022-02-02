@@ -68,6 +68,8 @@ func main() {
 
 	//AENS
 	app.Get("/aens", AENS_getAENS)
+	app.Get("/updateallaens", AENS_UpdateALLOnce)
+
 	app.Get("/aensbidding", AENS_getAENSBidding)
 	app.Post("/queryaens", AENS_WEB_QueryAENS)
 	app.Post("/regaens", AENS_WEB_DoRegAENS)
@@ -78,7 +80,7 @@ func main() {
 	app.Post("/updatenamepointer", AENS_WEB_DoUpdateAENS)
 	app.Post("/expertupdatenamepointer", AENS_WEB_ExpertDoUpdateAENS)
 
-	app.Get("/getaens", GetAENSData)
+	app.Get("/getaens", AENS_GetData)
 
 	//Contracts
 	app.Get("/contracts", Contract_WEB_ContractsHome)
@@ -123,9 +125,7 @@ func main() {
 
 	//handle proxy ipfs content for editor.md
 	app.Get("/ipfs/{anythingparameter:path}", func(ctx iris.Context) {
-		accountname := SESS_GetAccountName(ctx)
-
-		MyNodeConfig := DB_GetConfigs(accountname)
+		MyNodeConfig := DB_GetConfigs()
 		paramValue := ctx.Params().Get("anythingparameter")
 		ipfsUrl := MyNodeConfig.IPFSNode + "/ipfs/" + paramValue
 		resp, err := http.Get(ipfsUrl)
@@ -147,9 +147,7 @@ func main() {
 
 	//handle proxy ipns content for editor.md
 	app.Get("/ipns/{anythingparameter:path}", func(ctx iris.Context) {
-		accountname := SESS_GetAccountName(ctx)
-
-		MyNodeConfig := DB_GetConfigs(accountname)
+		MyNodeConfig := DB_GetConfigs()
 
 		paramValue := ctx.Params().Get("anythingparameter")
 		ipnsUrl := MyNodeConfig.IPFSNode + "/ipns/" + paramValue
@@ -173,9 +171,8 @@ func main() {
 
 	//test functions for ipfs
 	app.Get("/ipks/{anythingparameter:path}", func(ctx iris.Context) {
-		accountname := SESS_GetAccountName(ctx)
 
-		MyNodeConfig := DB_GetConfigs(accountname)
+		MyNodeConfig := DB_GetConfigs()
 		paramValue := ctx.Params().Get("anythingparameter")
 		ipfsUrl := MyNodeConfig.IPFSNode + "/ipfs/" + paramValue
 		fmt.Println("http.Get =>", ipfsUrl)
