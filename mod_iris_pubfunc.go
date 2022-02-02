@@ -188,7 +188,7 @@ type broadcastWaitTransactionNodeCapabilities interface {
 // SignBroadcastWaitTransaction is a convenience function that combines
 
 func httpGet(url string) string {
-
+	//improved timeout
 	timeout := time.Duration(5 * time.Second)
 	client := http.Client{
 		Timeout: timeout,
