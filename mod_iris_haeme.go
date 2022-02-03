@@ -61,6 +61,7 @@ type PageBlog struct {
 	PreLink          template.HTML
 	NextLink         template.HTML
 	PubTime          string
+	LastModTime      string
 	AuthorLink       template.HTML
 	TagsLink         template.HTML
 	CatgoriesLink    template.HTML
@@ -761,10 +762,16 @@ func ViewContent(ctx iris.Context, hash, pubkey, dbpath, myaid string) {
 		myTime, err := strconv.ParseInt(pubtime, 10, 64)
 		logtime := strconv.FormatInt(time.Now().Unix(), 10)
 		tm := time.Unix(myTime, 0)
-		pubtime = tm.Format("2006-01-02 15:04:05") //2018-07-11 15:10:19
+		pubtime = tm.Format("2006-01-02 15:04:05")
 
 		pubtime = strings.Replace(pubtime, "T", " ", -1)
 		pubtime = strings.Replace(pubtime, "Z", " ", -1)
+
+		myTime, err = strconv.ParseInt(lastmodtime, 10, 64)
+		tm = time.Unix(myTime, 0)
+		lastmodtime = tm.Format("2006-01-02 15:04:05")
+		lastmodtime = strings.Replace(lastmodtime, "T", " ", -1)
+		lastmodtime = strings.Replace(lastmodtime, "Z", " ", -1)
 
 		PreLink := template.HTML(GetPreLink(aid, pubkey))
 		NextLink := template.HTML(GetNextLink(aid, pubkey))
@@ -826,6 +833,7 @@ func ViewContent(ctx iris.Context, hash, pubkey, dbpath, myaid string) {
 		myPage.Site = GetSiteInfo(pubkey)
 		myPage.PageAuthorname = authorname
 		myPage.PageAuthor = pubkey
+		myPage.LastModTime = lastmodtime
 
 		ctx.ViewData("", myPage)
 

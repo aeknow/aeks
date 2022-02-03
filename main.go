@@ -8,11 +8,6 @@ import (
 	"github.com/kataras/iris/v12/websocket"
 )
 
-type clientPage struct {
-	Title string
-	Host  string
-}
-
 func main() {
 
 	perpage = 10
@@ -98,11 +93,13 @@ func main() {
 	app.Get("/token", Contract_WEB_getToken)
 	app.Post("/transfertoken", Contratc_WEB_TokenTransfer)
 
+	app.Get("/chat", Chaet_UI)
+
 	ws := websocket.New(websocket.DefaultGorillaUpgrader, websocket.Events{
 		websocket.OnNativeMessage: func(nsConn *websocket.NSConn, msg websocket.Message) error {
 			fmt.Printf("Server got: %s from [%s]", msg.Body, nsConn.Conn.ID())
 			//msg.To = globalAccount.Address
-			//handleChatMsg(msg, nsConn)
+			handleChatMsg(msg, nsConn)
 
 			return nil
 		},
@@ -118,10 +115,6 @@ func main() {
 	}
 
 	app.Get("/websocket", websocket.Handler(ws))
-
-	app.Get("/chattest", func(ctx iris.Context) {
-		ctx.View("client.php", clientPage{"Client Page", "localhost:8888"})
-	})
 
 	//handle proxy ipfs content for editor.md
 	app.Get("/ipfs/{anythingparameter:path}", func(ctx iris.Context) {

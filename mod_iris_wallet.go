@@ -588,6 +588,9 @@ func AE_WEB_CheckLogin(ctx iris.Context) {
 		//fmt.Println(sql_update)
 		db.Exec(sql_update)
 
+		//start message listening
+		go ListeningLocal(myAccount.Address)
+
 	}
 	db.Close()
 
