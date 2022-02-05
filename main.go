@@ -93,14 +93,17 @@ func main() {
 	app.Get("/token", Contract_WEB_getToken)
 	app.Post("/transfertoken", Contratc_WEB_TokenTransfer)
 
+	//Chaet
 	app.Get("/chat", Chaet_UI)
+	app.Post("/signjson", Chaet_SignJson)
 
 	ws := websocket.New(websocket.DefaultGorillaUpgrader, websocket.Events{
 		websocket.OnNativeMessage: func(nsConn *websocket.NSConn, msg websocket.Message) error {
 			fmt.Printf("Server got: %s from [%s]", msg.Body, nsConn.Conn.ID())
 			//msg.To = globalAccount.Address
 			handleChatMsg(msg, nsConn)
-
+			//fmt.Println(nsConn.Conn.Socket().Request().URL.Query().Get("user"))
+			//SmartPrint(msg)
 			return nil
 		},
 	})
