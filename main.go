@@ -96,12 +96,14 @@ func main() {
 	//Chaet
 	app.Get("/chat", Chaet_UI)
 	app.Post("/signjson", Chaet_SignJson)
+	app.Post("/uploadimage", MSG_UploadImage)
+	app.Post("/uploadfile", MSG_UploadFile)
 
 	ws := websocket.New(websocket.DefaultGorillaUpgrader, websocket.Events{
 		websocket.OnNativeMessage: func(nsConn *websocket.NSConn, msg websocket.Message) error {
-			fmt.Printf("Server got: %s from [%s]", msg.Body, nsConn.Conn.ID())
+			//fmt.Printf("Server got: %s from [%s]", msg.Body, nsConn.Conn.ID())
 			//msg.To = globalAccount.Address
-			handleChatMsg(msg, nsConn)
+			WebSocket_handleChatMsg(msg, nsConn)
 			//fmt.Println(nsConn.Conn.Socket().Request().URL.Query().Get("user"))
 			//SmartPrint(msg)
 			return nil
