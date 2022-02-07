@@ -1,10 +1,14 @@
 package main
 
 import (
+	"bytes"
+	"crypto/aes"
+	"crypto/cipher"
 	crypto_rand "crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+
 	"html/template"
 	"io"
 	"os"
@@ -34,6 +38,7 @@ type Msg struct {
 	Signature string
 	Body      string
 	Account   string
+	Mtype     string
 }
 
 type ChatMsg struct {
@@ -77,6 +82,15 @@ func Chaet_UI(ctx iris.Context) {
 	//fmt.Println("sealed: " + sealed)
 	//opened := MSG_OpenMSG(sealed, *MysignAccount)
 	//fmt.Println("opened: " + opened)
+	//origData := []byte("Hello World") // 待加密的数据
+	//key := []byte("0123456789abcdef") // 加密的密钥
+	//encrypted := MSG_AesEncryptCBC(origData, key)
+	//log.Println("密文(hex)：", hex.EncodeToString(encrypted))
+	//fmt.Println("密文(base64)：", base64.StdEncoding.EncodeToString(encrypted))
+	//decrypted := MSG_AesDecryptCBC(encrypted, key)
+	//encrypted := MSG_SealGroupMSG("123", "Hello, world!")
+	//fmt.Println("en: " + encrypted)
+	//fmt.Println("de: " + MSG_OpenGroupMSG("123", encrypted))
 
 	ctx.View("mainroad/client.php", PageChat{Account: accountname, PageTitle: "Chaet"})
 }
@@ -120,7 +134,11 @@ func PubSub_Listening(channel, accountname string, signAccount account.Account) 
 		r, err := sub.Next()
 		//open the sealed message
 		if !strings.Contains(string(r.Data), "Account") {
-			r.Data = []byte(MSG_OpenMSG(string(r.Data), signAccount))
+			if strings.Contains(channel, "group") {
+				r.Data = []byte(MSG_OpenGroupMSG(channel, string(r.Data)))
+			} else {
+				r.Data = []byte(MSG_OpenMSG(string(r.Data), signAccount))
+			}
 		}
 
 		fmt.Println("Pubsub " + channel + " received:" + string(r.Data))
@@ -195,7 +213,6 @@ func PubSub_Listening(channel, accountname string, signAccount account.Account) 
 		//	}
 
 	}
-
 	//ws.Close()
 
 }
@@ -222,15 +239,14 @@ func WebSocket_handleChatMsg(message iriswebsocket.Message, nsConn *iriswebsocke
 		//return
 	}
 
+	var msg Msg
+	err := json.Unmarshal([]byte(msgBody), &msg)
+	if err != nil {
+		fmt.Println(err)
+	}
+
 	//not ping msg, and not plain local msg
-	if !strings.Contains(string(msgBody), "ping") && !strings.Contains(msgBody, "sername") {
-
-		var msg Msg
-		err := json.Unmarshal([]byte(msgBody), &msg)
-		if err != nil {
-			fmt.Println(err)
-		}
-
+	if msg.Mtype != "ping" && !strings.Contains(msgBody, "sername") {
 		//fmt.Println("encoded body:" + string(msg.Body))
 		var s ChatMsg
 		bodyStr, _ := base64.StdEncoding.DecodeString(msg.Body)
@@ -239,10 +255,18 @@ func WebSocket_handleChatMsg(message iriswebsocket.Message, nsConn *iriswebsocke
 			fmt.Println(err)
 		}
 
-		if s.Mine.Id == accountname && !strings.Contains(msgBody, "sername") {
+		if s.Mine.Id == accountname {
 			fmt.Println("Publish message to channel " + s.To.Id)
-			//sealed with the target channel accounts
-			err = sh.PubSubPublish(s.To.Id, MSG_SealTo(s.To.Id, msgBody))
+
+			if msg.Mtype == "group" {
+				//sealed with the target group passwords
+				err = sh.PubSubPublish(s.To.Id, MSG_SealGroupMSG(s.To.Id, msgBody))
+			}
+
+			if msg.Mtype == "private" {
+				//sealed with the target channel accounts
+				err = sh.PubSubPublish(s.To.Id, MSG_SealTo(s.To.Id, msgBody))
+			}
 
 			//fmt.Println("Sealed: " + MSG_SealTo(s.To.Id, msgBody))
 
@@ -254,13 +278,6 @@ func WebSocket_handleChatMsg(message iriswebsocket.Message, nsConn *iriswebsocke
 			fmt.Println("Received Msg:" + msgBody)
 		}
 	} else {
-		//msgBody = "ping from:" + accountname
-		var msg Msg
-		err := json.Unmarshal([]byte(msgBody), &msg)
-		if err != nil {
-			fmt.Println(err)
-		}
-
 		if msg.Account == accountname && !strings.Contains(msgBody, "sername") {
 			err := sh.PubSubPublish(topic, msgBody)
 			fmt.Println("braoadcast to channel " + topic)
@@ -415,6 +432,25 @@ func MSG_UploadFile(ctx iris.Context) {
 
 }
 
+func MSG_SealGroupMSG(groupid string, message string) string {
+	key := []byte(DB_GetGroupKey(groupid)) // 加密的密钥
+	encrypted := MSG_AesEncryptCBC([]byte(message), key)
+
+	return base64.StdEncoding.EncodeToString(encrypted)
+}
+
+func MSG_OpenGroupMSG(groupid string, message string) string {
+	//fmt.Println(DB_GetGroupKey(groupid) + message)
+	key := []byte(DB_GetGroupKey(groupid)) // 加密的密钥
+	encrypted, _ := base64.StdEncoding.DecodeString(message)
+	return string(MSG_AesDecryptCBC(encrypted, key))
+}
+
+func DB_GetGroupKey(groupid string) string {
+	//TODO:get group key from list data, which can be set by the owner
+	return "0123456789abcdef"
+}
+
 //seal message with the target address
 func MSG_SealTo(ToAddress, Message string) string {
 	recipientPublicKey, _, _ := box.GenerateKey(crypto_rand.Reader) //assume a key
@@ -460,4 +496,35 @@ func MSG_OpenMSG(Message string, signAccount account.Account) string {
 	}
 
 	return string(openedMsg)
+}
+
+func MSG_AesEncryptCBC(origData []byte, key []byte) (encrypted []byte) {
+	// 分组秘钥
+	// NewCipher该函数限制了输入key的长度必须为16, 24或者32
+	block, _ := aes.NewCipher(key)
+	blockSize := block.BlockSize()                              // 获取秘钥块的长度
+	origData = pkcs5Padding(origData, blockSize)                // 补全码
+	blockMode := cipher.NewCBCEncrypter(block, key[:blockSize]) // 加密模式
+	encrypted = make([]byte, len(origData))                     // 创建数组
+	blockMode.CryptBlocks(encrypted, origData)                  // 加密
+	return encrypted
+}
+func MSG_AesDecryptCBC(encrypted []byte, key []byte) (decrypted []byte) {
+	block, _ := aes.NewCipher(key)                              // 分组秘钥
+	blockSize := block.BlockSize()                              // 获取秘钥块的长度
+	blockMode := cipher.NewCBCDecrypter(block, key[:blockSize]) // 加密模式
+	decrypted = make([]byte, len(encrypted))                    // 创建数组
+	blockMode.CryptBlocks(decrypted, encrypted)                 // 解密
+	decrypted = pkcs5UnPadding(decrypted)                       // 去除补全码
+	return decrypted
+}
+func pkcs5Padding(ciphertext []byte, blockSize int) []byte {
+	padding := blockSize - len(ciphertext)%blockSize
+	padtext := bytes.Repeat([]byte{byte(padding)}, padding)
+	return append(ciphertext, padtext...)
+}
+func pkcs5UnPadding(origData []byte) []byte {
+	length := len(origData)
+	unpadding := int(origData[length-1])
+	return origData[:(length - unpadding)]
 }

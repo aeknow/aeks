@@ -590,7 +590,9 @@ func AE_WEB_CheckLogin(ctx iris.Context) {
 
 		//start message listening
 		go PubSub_Listening(myAccount.Address, myAccount.Address, *myAccount)
-		go PubSub_Listening("ak_public", myAccount.Address, *myAccount) //test channel
+		go PubSub_Listening("ak_public", myAccount.Address, *myAccount)                                                 //test channel
+		go PubSub_Listening("group_bKVvB7iFJKuzH6EvpzLfWKFUpG3qFxUvj8eGwdkFEb7TCTwP8_1", myAccount.Address, *myAccount) //test group channel
+		go PubSub_Listening("group_fCCw1JEkvXdztZxk8FRGNAkvmArhVeow89e64yX4AxbCPrVh5_2", myAccount.Address, *myAccount) //test group channel
 
 	}
 	db.Close()
