@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Chaet</title>
 
-<link rel="stylesheet" href="../dist/css/layui.css">
+<link rel="stylesheet" href="/views/layim/dist/css/layui.css">
 <style>
 html{background-color: #333;}
 </style>
@@ -13,7 +13,7 @@ html{background-color: #333;}
 <body>
 
 
-<script src="../dist/layui.js"></script>
+<script src="/views/layim/dist/layui.js"></script>
 <script>
 
 if(!/^http(s*):\/\//.test(location.href)){
@@ -40,7 +40,7 @@ layui.use('layim', function(layim){
 
     //初始化接口
     init: {
-      url: 'json/getList.json'
+      url: '/views/layim/sample/json/getList.json'
       ,data: {}
     }
     
@@ -62,7 +62,7 @@ layui.use('layim', function(layim){
 
     //查看群员接口
     ,members: {
-      url: 'json/getMembers.json'
+      url: '/views/layim/sample/json/getMembers.json'
       ,data: {}
     }
     

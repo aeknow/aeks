@@ -8,7 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-
+	"html"
 	"html/template"
 	"io"
 	"os"
@@ -190,9 +190,9 @@ func PubSub_Listening(channel, accountname string, signAccount account.Account) 
 					pubtime := strconv.FormatInt(time.Now().UnixNano()/1e6, 10)
 
 					if s.To.Groupname == "" {
-						msgstr = "{\"username\":\"" + s.Mine.Username + "\",\"avatar\":\"" + s.Mine.Avatar + "\",\"id\":\"" + s.Mine.Id + "\",\"type\":\"friend\",\"content\":\"" + s.Mine.Content + "\",\"cid\":0,\"mine\":false,\"fromid\":\"" + s.Mine.Id + "\",\"timestamp\":" + pubtime + "}"
+						msgstr = "{\"username\":\"" + s.Mine.Username + "\",\"avatar\":\"" + s.Mine.Avatar + "\",\"id\":\"" + s.Mine.Id + "\",\"type\":\"friend\",\"content\":\"" + strings.Replace(html.EscapeString(s.Mine.Content), "\n", "\\n", -1) + "\",\"cid\":0,\"mine\":false,\"fromid\":\"" + s.Mine.Id + "\",\"timestamp\":" + pubtime + "}"
 					} else {
-						msgstr = "{\"username\":\"" + s.Mine.Username + "\",\"groupname\":\"" + s.To.Groupname + "\",\"avatar\":\"" + s.Mine.Avatar + "\",\"id\":\"" + s.To.Id + "\",\"type\":\"group\",\"content\":\"" + s.Mine.Content + "\",\"cid\":0,\"mine\":false,\"fromid\":\"" + s.Mine.Id + "\",\"timestamp\":" + pubtime + ",\"name\":\"" + s.To.Name + "\"}"
+						msgstr = "{\"username\":\"" + s.Mine.Username + "\",\"groupname\":\"" + s.To.Groupname + "\",\"avatar\":\"" + s.Mine.Avatar + "\",\"id\":\"" + s.To.Id + "\",\"type\":\"group\",\"content\":\"" + strings.Replace(html.EscapeString(s.Mine.Content), "\n", "\\n", -1) + "\",\"cid\":0,\"mine\":false,\"fromid\":\"" + s.Mine.Id + "\",\"timestamp\":" + pubtime + ",\"name\":\"" + s.To.Name + "\"}"
 					}
 
 					_, err = ws.Write([]byte(msgstr))
@@ -225,8 +225,6 @@ func DB_RecordActiveInfo(pingInfo string) {
 func WebSocket_handleChatMsg(message iriswebsocket.Message, nsConn *iriswebsocket.NSConn) {
 
 	accountname := nsConn.Conn.Socket().Request().URL.Query().Get("user")
-	//accountname := "ak_bKVvB7iFJKuzH6EvpzLfWKFUpG3qFxUvj8eGwdkFEb7TCTwP8"
-
 	topic := "ak_public" //public topic
 	MyNodeConfig := DB_GetConfigs()
 	sh := shell.NewShell(MyNodeConfig.IPFSAPI)
@@ -280,13 +278,13 @@ func WebSocket_handleChatMsg(message iriswebsocket.Message, nsConn *iriswebsocke
 	} else {
 		if msg.Account == accountname && !strings.Contains(msgBody, "sername") {
 			err := sh.PubSubPublish(topic, msgBody)
-			fmt.Println("braoadcast to channel " + topic)
+			fmt.Println("braoadcast ping to channel " + topic)
 			if err != nil {
-				fmt.Println("Online braoadcast failed.")
+				fmt.Println("Braoadcast ping failed.")
 
 			}
 
-			fmt.Println("Broadcast ping:" + msgBody)
+			//fmt.Println("Broadcast ping:" + msgBody)
 		} else {
 			fmt.Println("Received ping:" + msgBody)
 		}

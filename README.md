@@ -1,1 +1,1 @@
-An enternal knowledge system based on Aeternity and IPFS
+An experimental knowledge system based on Aeternity and IPFS
