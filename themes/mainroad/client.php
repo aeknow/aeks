@@ -274,9 +274,9 @@
                             }
 
                             ,
-                            isAudio: true //开启聊天工具栏音频
+                            isAudio: false //开启聊天工具栏音频
                                 ,
-                            isVideo: true //开启聊天工具栏视频
+                            isVideo: false //开启聊天工具栏视频
 
                             //扩展工具栏
                             ,
@@ -288,7 +288,7 @@
 
                             //,brief: true //是否简约模式（若开启则不显示主面板）
 
-                            //,title: 'Chaet' //自定义主面板最小化时的标题
+                            ,title: 'Chaet' //自定义主面板最小化时的标题
                             ,
                             right: '10px' //主面板相对浏览器右侧距离
                                 //,minRight: '90px' //聊天面板最小化时相对浏览器右侧距离
@@ -303,7 +303,7 @@
                                 //,voice: false //声音提醒，默认开启，声音文件为：default.mp3
 
                             ,
-                            msgbox: '/views/layim/dist/css/modules/layim/html/msgbox.html' //消息盒子页面地址，若不开启，剔除该项即可
+                            msgbox: '/views/layim/dist/css/modules/layim/html/msgbox.html?aid={{.Account}}' //消息盒子页面地址，若不开启，剔除该项即可
                                 ,
                             find: '/views/layim/dist/css/modules/layim/html/find.html' //发现页面地址，若不开启，剔除该项即可
                                 ,

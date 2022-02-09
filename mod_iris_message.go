@@ -113,9 +113,36 @@ func Chaet_SignJson(ctx iris.Context) {
 
 }
 
+//Start listening the pubsub channels, for the whole message system.
+func PubSub_StartListen(accountname string, signAccount account.Account) {
+	fmt.Println("Check IPFS status...")
+	for {
+		sh := shell.NewShell("127.0.0.1:5001")
+		cid, err := sh.Add(strings.NewReader("Hello from AEKs!"))
+
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %s", err)
+		} else {
+			fmt.Println("IPFS booted, " + cid)
+			goto Loop
+		}
+
+		time.Sleep(time.Duration(1) * time.Second)
+	}
+
+Loop:
+	fmt.Println("Start listening channels...")
+	//start message listening
+	go PubSub_Listening(accountname, accountname, signAccount)
+	go PubSub_Listening("ak_public", accountname, signAccount)                                                 //test channel
+	go PubSub_Listening("group_bKVvB7iFJKuzH6EvpzLfWKFUpG3qFxUvj8eGwdkFEb7TCTwP8_1", accountname, signAccount) //test group channel
+	go PubSub_Listening("group_fCCw1JEkvXdztZxk8FRGNAkvmArhVeow89e64yX4AxbCPrVh5_2", accountname, signAccount) //test group channel
+
+}
+
+//start listening a single channel, decode&process the messages
 func PubSub_Listening(channel, accountname string, signAccount account.Account) {
 	var origin = "http://127.0.0.1:8888/"
-	//var url = "ws://127.0.0.1:8888/websocket?user=" + accountname
 	var url = "ws://127.0.0.1:8888/websocket"
 	ws, err := websocket.Dial(url, "", origin)
 
@@ -140,7 +167,9 @@ func PubSub_Listening(channel, accountname string, signAccount account.Account) 
 				r.Data = []byte(MSG_OpenMSG(string(r.Data), signAccount))
 			}
 		}
-
+		fmt.Println(r.From)
+		fmt.Println(string(r.Seqno))
+		fmt.Println(r.TopicIDs)
 		fmt.Println("Pubsub " + channel + " received:" + string(r.Data))
 
 		//if !strings.Contains(string(r.Data), "sername") {

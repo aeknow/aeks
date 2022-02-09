@@ -588,12 +588,7 @@ func AE_WEB_CheckLogin(ctx iris.Context) {
 		//fmt.Println(sql_update)
 		db.Exec(sql_update)
 
-		//start message listening
-		go PubSub_Listening(myAccount.Address, myAccount.Address, *myAccount)
-		go PubSub_Listening("ak_public", myAccount.Address, *myAccount)                                                 //test channel
-		go PubSub_Listening("group_bKVvB7iFJKuzH6EvpzLfWKFUpG3qFxUvj8eGwdkFEb7TCTwP8_1", myAccount.Address, *myAccount) //test group channel
-		go PubSub_Listening("group_fCCw1JEkvXdztZxk8FRGNAkvmArhVeow89e64yX4AxbCPrVh5_2", myAccount.Address, *myAccount) //test group channel
-
+		go PubSub_StartListen(myAccount.Address, *myAccount)
 	}
 	db.Close()
 
@@ -689,7 +684,7 @@ func IPFS_bootIPFS(repo string) { //boot IPFS independently
 	IPFS_checkRepo(repo)
 
 	sh := shell.NewShell("127.0.0.1:5001")
-	cid, err := sh.Add(strings.NewReader("Hello AEK!"))
+	cid, err := sh.Add(strings.NewReader("Hello from AEKs!"))
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %s", err)
@@ -1204,6 +1199,13 @@ CREATE TABLE if not exists "logs"(
 	sql_index = `create index authorindex on aek(author);`
 	db.Exec(sql_index)
 
+	db.Close()
+
+	//Create FTS5 index data for all datas
+	dbpath = "file:./data/accounts/" + pubkey + "/index.db?auto_vacuum=1"
+	db, _ = sql.Open("sqlite", dbpath)
+	sql_index = `CREATE VIRTUAL TABLE pages USING fts5(title, keywords, body,source,id);`
+	db.Exec(sql_index)
 	db.Close()
 
 }
