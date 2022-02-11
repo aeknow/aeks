@@ -456,7 +456,6 @@ func MSG_UploadFile(ctx iris.Context) {
 	}
 
 	ctx.Writef(uploadedFileValue)
-
 }
 
 func MSG_SealGroupMSG(groupid string, message string) string {

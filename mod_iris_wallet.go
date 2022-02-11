@@ -1204,7 +1204,7 @@ CREATE TABLE if not exists "logs"(
 	//Create FTS5 index data for all datas
 	dbpath = "file:./data/accounts/" + pubkey + "/index.db?auto_vacuum=1"
 	db, _ = sql.Open("sqlite", dbpath)
-	sql_index = `CREATE VIRTUAL TABLE pages USING fts5(title, keywords, body,source,id);`
+	sql_index = `CREATE VIRTUAL TABLE pages USING fts5(title, author, authorname,keywords,abstract, body,source,id,hash);`
 	db.Exec(sql_index)
 	db.Close()
 

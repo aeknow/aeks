@@ -808,6 +808,9 @@ func ViewContent(ctx iris.Context, hash, pubkey, dbpath, myaid string) {
 		}
 		bodystr, _ := base64.StdEncoding.DecodeString(pageinfo.Body)
 
+		//save to index
+		DB_UpdateIndex(accountname, title, author, authorname, keywords, abstract.String, body, "self", hash)
+		//save to logs
 		db, err := sql.Open("sqlite", "./data/accounts/"+accountname+"/logs.db")
 		sql_check := "SELECT hash FROM logs WHERE hash='" + hash + "'"
 		checkError(err)
@@ -825,6 +828,7 @@ func ViewContent(ctx iris.Context, hash, pubkey, dbpath, myaid string) {
 			_, err := db.Exec(sql_insert)
 			checkError(err)
 		}
+
 		db.Close()
 
 		//myPage := PageBlog{AuthorLink: AuthorLink, PubTime: pubtime, TagsLink: TagsLink, PreLink: PreLink, NextLink: NextLink, Account: accountname, PageTitle: title, PageContent: template.HTML(pageinfo.Body), PageTags: keywords, EditPath: author, LastHash: lasthash}
@@ -1914,4 +1918,37 @@ func AENS_UpdateALLOnce(ctx iris.Context) {
 	_, err = db.Exec(sql_insert)
 	checkError(err)
 	db.Close()
+}
+
+func DB_UpdateIndex(accountname, title, author, authorname, keywords, abstract, body, source, hash string) {
+	//body = html.EscapeString(body)
+	body = strings.Replace(html.EscapeString(body), "\n", "\\n", -1)
+	dbpath := "./data/accounts/" + accountname + "/index.db"
+	db, err := sql.Open("sqlite", dbpath)
+	sql_check := "SELECT hash FROM pages WHERE hash='" + hash + "' or (title='" + title + "' AND author='" + author + "')"
+	checkError(err)
+
+	rows, err := db.Query(sql_check)
+	checkError(err)
+	NeedInsert := true
+	old_hash := hash
+
+	for rows.Next() {
+		NeedInsert = false
+		err = rows.Scan(&old_hash)
+	}
+	checkError(err)
+
+	if NeedInsert {
+		sql_insert := "INSERT INTO pages(title, author, authorname,keywords,abstract, body,source,hash) VALUES('" + title + "','" + author + "','" + authorname + "','" + keywords + "','" + abstract + "','" + body + "','" + source + "','" + hash + "')"
+		fmt.Println(sql_insert)
+		_, err = db.Exec(sql_insert)
+		checkError(err)
+	} else {
+		sql_Update := "UPDATE pages set hash='" + hash + "',abstract='" + abstract + "',title='" + title + "',body='" + body + "',keywords='" + keywords + "' WHERE hash='" + old_hash + "'"
+		fmt.Println(sql_Update)
+		_, err = db.Exec(sql_Update)
+		checkError(err)
+	}
+
 }
