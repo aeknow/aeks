@@ -4,15 +4,20 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/huichen/sego"
+
 	"github.com/kataras/iris/v12"
 	"github.com/kataras/iris/v12/websocket"
 )
+
+var segmenter sego.Segmenter
 
 func main() {
 
 	perpage = 10
 	go IPFS_bootIPFS("default")
 	go AE_CheckActiveNode()
+
 	app := iris.New()
 	fmt.Println("Web UI is booting...")
 	app.HandleDir("/views", "./views")
@@ -194,6 +199,8 @@ func main() {
 		//fmt.Println("Got?")
 
 	})
+	fmt.Println("Load Chinese dictionary")
+	segmenter.LoadDictionary("./data/dictionary.txt")
 
 	app.Run(iris.Addr(":8888"))
 

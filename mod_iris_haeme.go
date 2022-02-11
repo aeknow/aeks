@@ -21,6 +21,8 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/huichen/sego"
+
 	//"os/exec"
 
 	//"path"
@@ -1938,6 +1940,10 @@ func DB_UpdateIndex(accountname, title, author, authorname, keywords, abstract, 
 		err = rows.Scan(&old_hash)
 	}
 	checkError(err)
+	body = DB_IndexCJKText(body, segmenter)
+	title = DB_IndexCJKText(title, segmenter)
+	abstract = DB_IndexCJKText(abstract, segmenter)
+	keywords = strings.Replace(keywords, ",", " ", -1)
 
 	if NeedInsert {
 		sql_insert := "INSERT INTO pages(title, author, authorname,keywords,abstract, body,source,hash) VALUES('" + title + "','" + author + "','" + authorname + "','" + keywords + "','" + abstract + "','" + body + "','" + source + "','" + hash + "')"
@@ -1951,4 +1957,18 @@ func DB_UpdateIndex(accountname, title, author, authorname, keywords, abstract, 
 		checkError(err)
 	}
 
+}
+
+//Index Chinese, Japanese and Korea text to searchable segments
+func DB_IndexCJKText(text string, mySegmenter sego.Segmenter) string {
+	segments := mySegmenter.Segment([]byte(text))
+	strBeforeClean := sego.SegmentsToSlice(segments, false)
+
+	indexedStr := ""
+	for _, value := range strBeforeClean {
+
+		indexedStr = indexedStr + " " + value
+
+	}
+	return indexedStr
 }

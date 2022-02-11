@@ -4,6 +4,7 @@ go 1.15
 
 require (
 	github.com/aeternity/aepp-sdk-go/v9 v9.0.0
+	github.com/huichen/sego v0.0.0-20210824061530-c87651ea5c76 // indirect
 	github.com/ipfs/go-ipfs-api v0.3.0
 	github.com/jdgcs/ed25519 v0.0.0-20200408034030-96c10d46cdc3
 	github.com/kataras/iris/v12 v12.1.8
