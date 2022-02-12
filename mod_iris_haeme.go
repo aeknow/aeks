@@ -1989,6 +1989,7 @@ func DB_Search(ctx iris.Context) {
 	accountname := SESS_GetAccountName(ctx)
 	dbpath := "./data/accounts/" + accountname + "/index.db"
 	keyword := ctx.FormValue("keyword")
+	keyword = strings.TrimSpace(keyword)
 
 	if len(keyword) < 1 {
 		fmt.Println(len(keyword))
@@ -2008,7 +2009,7 @@ func DB_Search(ctx iris.Context) {
 
 	db, err := sql.Open("sqlite", dbpath)
 	checkError(err)
-	sql_search := "SELECT hash,source,author FROM pages WHERE title MATCH '" + keyword + "' OR abstract MATCH '" + keyword + "' OR body MATCH '" + keyword + "' or keywords MATCH '" + keyword + "' LIMIT 100"
+	sql_search := "SELECT hash,source,author FROM pages WHERE title MATCH '" + keyword + "' OR abstract MATCH '" + keyword + "' OR body MATCH '" + keyword + "' or keywords MATCH '" + keyword + "' LIMIT 10"
 	fmt.Println(sql_search)
 
 	rows, err := db.Query(sql_search)
@@ -2056,7 +2057,7 @@ func DB_Search(ctx iris.Context) {
 func DB_GetSingleResult(hash, dbpath string) Post {
 	db, err := sql.Open("sqlite", dbpath)
 	checkError(err)
-	sql_query := "SELECT aid,title,author,abstract,pubtime,authorname FROM aek WHERE hash='" + hash + "'"
+	sql_query := "SELECT aid,title,author,abstract,lastmodtime,authorname FROM aek WHERE hash='" + hash + "'"
 	rows, err := db.Query(sql_query)
 	checkError(err)
 
