@@ -60,6 +60,7 @@ func main() {
 	app.Get("/delpage", iDelBlog)
 	app.Get("/setsite", iSetSite)
 	app.Post("/savesitesetting", iSaveSetSite)
+	app.Get("/search", DB_Search)
 
 	app.Get("/goaens", iGoAENS)
 

@@ -117,6 +117,7 @@ type Post struct {
 	Remark      string
 	Pubkey      string
 	IsOwner     string
+	AuthorName  string
 }
 
 type Posts struct {
@@ -811,7 +812,12 @@ func ViewContent(ctx iris.Context, hash, pubkey, dbpath, myaid string) {
 		bodystr, _ := base64.StdEncoding.DecodeString(pageinfo.Body)
 
 		//save to index
-		DB_UpdateIndex(accountname, title, author, authorname, keywords, abstract.String, body, "self", hash)
+		if accountname == author {
+			DB_UpdateIndex(accountname, title, author, authorname, keywords, abstract.String, body, "self", hash)
+		} else {
+			DB_UpdateIndex(accountname, title, author, authorname, keywords, abstract.String, body, "outer", hash)
+		}
+
 		//save to logs
 		db, err := sql.Open("sqlite", "./data/accounts/"+accountname+"/logs.db")
 		sql_check := "SELECT hash FROM logs WHERE hash='" + hash + "'"
@@ -1922,8 +1928,8 @@ func AENS_UpdateALLOnce(ctx iris.Context) {
 	db.Close()
 }
 
+//update the index of the pages
 func DB_UpdateIndex(accountname, title, author, authorname, keywords, abstract, body, source, hash string) {
-	//body = html.EscapeString(body)
 	body = strings.Replace(html.EscapeString(body), "\n", "\\n", -1)
 	dbpath := "./data/accounts/" + accountname + "/index.db"
 	db, err := sql.Open("sqlite", dbpath)
@@ -1940,6 +1946,8 @@ func DB_UpdateIndex(accountname, title, author, authorname, keywords, abstract, 
 		err = rows.Scan(&old_hash)
 	}
 	checkError(err)
+
+	//index CJK to segments
 	body = DB_IndexCJKText(body, segmenter)
 	title = DB_IndexCJKText(title, segmenter)
 	abstract = DB_IndexCJKText(abstract, segmenter)
@@ -1966,9 +1974,120 @@ func DB_IndexCJKText(text string, mySegmenter sego.Segmenter) string {
 
 	indexedStr := ""
 	for _, value := range strBeforeClean {
-
 		indexedStr = indexedStr + " " + value
+	}
+
+	return indexedStr
+}
+
+//Search interface
+func DB_Search(ctx iris.Context) {
+
+	if !checkLogin(ctx) {
+		ctx.Redirect("/")
+	}
+	accountname := SESS_GetAccountName(ctx)
+	dbpath := "./data/accounts/" + accountname + "/index.db"
+	keyword := ctx.FormValue("keyword")
+
+	if len(keyword) < 1 {
+		fmt.Println(len(keyword))
+		ctx.HTML("NULL search string")
+		return
+	}
+
+	keyword = DB_IndexCJKText(keyword, segmenter)
+	keyword = strings.TrimSpace(keyword)
+
+	//clean space?
+	keyword = strings.Replace(keyword, "  ", " ", -1)
+	keyword = strings.Replace(keyword, "  ", " ", -1)
+	keyword = strings.Replace(keyword, "  ", " ", -1)
+
+	keyword = strings.Replace(keyword, " ", " OR ", -1)
+
+	db, err := sql.Open("sqlite", dbpath)
+	checkError(err)
+	sql_search := "SELECT hash,source,author FROM pages WHERE title MATCH '" + keyword + "' OR abstract MATCH '" + keyword + "' OR body MATCH '" + keyword + "' or keywords MATCH '" + keyword + "' LIMIT 100"
+	fmt.Println(sql_search)
+
+	rows, err := db.Query(sql_search)
+	checkError(err)
+
+	source := ""
+	author := ""
+	hash := ""
+	var homePosts Posts
+	homePosts.Account = accountname
+
+	homePosts.Posts = []Post{
+		{},
+		{},
+		{},
+		{},
+		{},
+		{},
+		{},
+		{},
+		{},
+		{},
+	}
+
+	postCounter := 0
+	//my pages
+	for rows.Next() {
+		err = rows.Scan(&hash, &source, &author)
+		//if source == "self" {
+		homePosts.Posts[postCounter] = DB_GetSingleResult(hash, "./data/accounts/"+author+"/public.db")
+		postCounter++
+		//}
+	}
+	checkError(err)
+
+	homePosts.Account = accountname
+	homePosts.Site = GetSiteInfo(accountname)
+	homePosts.Title = "Search:" + keyword
+
+	ctx.ViewData("", homePosts)
+	ctx.View("mainroad/haeme_search.php")
+	db.Close()
+}
+
+func DB_GetSingleResult(hash, dbpath string) Post {
+	db, err := sql.Open("sqlite", dbpath)
+	checkError(err)
+	sql_query := "SELECT aid,title,author,abstract,pubtime,authorname FROM aek WHERE hash='" + hash + "'"
+	rows, err := db.Query(sql_query)
+	checkError(err)
+
+	var singlePost Post
+
+	var aid int
+	title := ""
+	author := ""
+	abstract := ""
+	pubtime := ""
+	authorname := ""
+
+	for rows.Next() {
+		err = rows.Scan(&aid, &title, &author, &abstract, &pubtime, &authorname)
+
+		myTime, _ := strconv.ParseInt(pubtime, 10, 64)
+		tm := time.Unix(myTime, 0)
+		pubtime = tm.Format("2006-01-02 15:04:05")
+		pubtime = strings.Replace(pubtime, "T", " ", -1)
+		pubtime = strings.Replace(pubtime, "Z", " ", -1)
+
+		singlePost.Abstract = abstract
+		singlePost.Title = title
+		singlePost.LastModTime = pubtime
+		singlePost.Aid = aid
+		singlePost.Pubkey = author
+		singlePost.Hash = hash
+		singlePost.AuthorName = authorname
 
 	}
-	return indexedStr
+
+	return singlePost
+
 }
