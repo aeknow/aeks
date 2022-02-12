@@ -41,7 +41,7 @@
                             <h2 class="list__title post__title">
                                 <a href="view?pubkey={{.Pubkey}}&hash={{.Hash}}&aid={{.Aid}}" rel="bookmark">
 			 {{.Title}}
-			</a>  <small>-- by <a href="/view?pubkey={{.Pubkey}}&viewtype=author">{{.AuthorName}}</a></small>
+			</a>  <small>-- in <a href="/view?pubkey={{.Pubkey}}&viewtype=author">{{.AuthorName}}</a></small>
 
                             </h2>
 
