@@ -588,13 +588,12 @@ func ViewTag(ctx iris.Context, tag string, pubkey string, dbpath string, page st
 		homePosts.Paginator.HasPrev = false
 
 	}
-
+	db.Close()
 	ctx.ViewData("", homePosts)
 	//myTheme := DB_GetConfigItem(accountname, "Theme")
 
 	//ctx.View(myTheme + "/haeme_index.php")
 	ctx.View("mainroad/haeme_categories.php")
-	db.Close()
 
 	//TODO: 用户页面布局，按时间展示
 }
@@ -710,13 +709,12 @@ func ViewCat(ctx iris.Context, tag string, pubkey string, dbpath string, page st
 		homePosts.Paginator.HasPrev = false
 
 	}
-
+	db.Close()
 	ctx.ViewData("", homePosts)
 	//myTheme := DB_GetConfigItem(accountname, "Theme")
 
 	//ctx.View(myTheme + "/haeme_index.php")
 	ctx.View("mainroad/haeme_categories.php")
-	db.Close()
 
 	//TODO: 用户页面布局，按时间展示
 }
@@ -993,6 +991,7 @@ func GetTagCount(pubkey string, tag string, perpage int) int {
 	var count int
 	count = 0
 	err = db.QueryRow(querystr).Scan(&count)
+	db.Close()
 
 	return (count / perpage) + 1
 
@@ -1007,7 +1006,7 @@ func GetCatCount(pubkey string, cat string, perpage int) int {
 	var count int
 	count = 0
 	err = db.QueryRow(querystr).Scan(&count)
-
+	db.Close()
 	return (count / perpage) + 1
 
 }
@@ -1021,7 +1020,7 @@ func GetTotalCount(pubkey string, perpage int) int {
 	var count int
 	count = 0
 	err = db.QueryRow(querystr).Scan(&count)
-
+	db.Close()
 	return (count / perpage) + 1
 
 }
@@ -1114,7 +1113,7 @@ func GetSiteInfo(pubkey string) SiteConfig {
 		}
 
 	}
-
+	db.Close()
 	return SiteConfigs
 
 }
@@ -1360,7 +1359,7 @@ func iDelBlog(ctx iris.Context) {
 
 		fmt.Println("Delete Failed", err)
 	}
-
+	db.Close()
 }
 
 func CleanIPFSChain(accountname, aid string) {
@@ -1965,6 +1964,8 @@ func DB_UpdateIndex(accountname, title, author, authorname, keywords, abstract, 
 		checkError(err)
 	}
 
+	db.Close()
+
 }
 
 //Index Chinese, Japanese and Korea text to searchable segments
@@ -2048,10 +2049,10 @@ func DB_Search(ctx iris.Context) {
 	homePosts.Account = accountname
 	homePosts.Site = GetSiteInfo(accountname)
 	homePosts.Title = "Search:" + keyword
-
+	db.Close()
 	ctx.ViewData("", homePosts)
 	ctx.View("mainroad/haeme_search.php")
-	db.Close()
+
 }
 
 func DB_GetSingleResult(hash, dbpath string) Post {
@@ -2088,7 +2089,7 @@ func DB_GetSingleResult(hash, dbpath string) Post {
 		singlePost.AuthorName = authorname
 
 	}
-
+	db.Close()
 	return singlePost
 
 }
