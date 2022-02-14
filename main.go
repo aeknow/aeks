@@ -11,10 +11,13 @@ import (
 )
 
 var segmenter sego.Segmenter
+var MyNodeConfig AeknowConfig
 
 func main() {
 
 	perpage = 10
+	MyNodeConfig = DB_GetConfigs()
+
 	go IPFS_bootIPFS("default")
 	go AE_CheckActiveNode()
 
@@ -129,7 +132,7 @@ func main() {
 
 	//handle proxy ipfs content for editor.md
 	app.Get("/ipfs/{anythingparameter:path}", func(ctx iris.Context) {
-		MyNodeConfig := DB_GetConfigs()
+		//MyNodeConfig := DB_GetConfigs()
 		paramValue := ctx.Params().Get("anythingparameter")
 		ipfsUrl := MyNodeConfig.IPFSNode + "/ipfs/" + paramValue
 		resp, err := http.Get(ipfsUrl)
@@ -151,7 +154,7 @@ func main() {
 
 	//handle proxy ipns content for editor.md
 	app.Get("/ipns/{anythingparameter:path}", func(ctx iris.Context) {
-		MyNodeConfig := DB_GetConfigs()
+		//MyNodeConfig := DB_GetConfigs()
 
 		paramValue := ctx.Params().Get("anythingparameter")
 		ipnsUrl := MyNodeConfig.IPFSNode + "/ipns/" + paramValue
@@ -176,7 +179,7 @@ func main() {
 	//test functions for ipfs
 	app.Get("/ipks/{anythingparameter:path}", func(ctx iris.Context) {
 
-		MyNodeConfig := DB_GetConfigs()
+		//MyNodeConfig := DB_GetConfigs()
 		paramValue := ctx.Params().Get("anythingparameter")
 		ipfsUrl := MyNodeConfig.IPFSNode + "/ipfs/" + paramValue
 		fmt.Println("http.Get =>", ipfsUrl)

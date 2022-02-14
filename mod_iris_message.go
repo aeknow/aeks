@@ -149,7 +149,7 @@ func PubSub_Listening(channel, accountname string, signAccount account.Account) 
 	if err != nil {
 		//log.Fatal(err)
 	}
-	MyNodeConfig := DB_GetConfigs()
+	//MyNodeConfig := DB_GetConfigs()
 	sh := shell.NewShell(MyNodeConfig.IPFSAPI)
 	sub, err := sh.PubSubSubscribe(channel)
 
@@ -167,10 +167,10 @@ func PubSub_Listening(channel, accountname string, signAccount account.Account) 
 				r.Data = []byte(MSG_OpenMSG(string(r.Data), signAccount))
 			}
 		}
-		fmt.Println(r.From)
-		fmt.Println(string(r.Seqno))
-		fmt.Println(r.TopicIDs)
-		fmt.Println("Pubsub " + channel + " received:" + string(r.Data))
+		//fmt.Println(r.From)
+		//fmt.Println(string(r.Seqno))
+		//fmt.Println(r.TopicIDs)
+		//	fmt.Println("Pubsub " + channel + " received:" + string(r.Data))
 
 		//if !strings.Contains(string(r.Data), "sername") {
 
@@ -255,7 +255,7 @@ func WebSocket_handleChatMsg(message iriswebsocket.Message, nsConn *iriswebsocke
 
 	accountname := nsConn.Conn.Socket().Request().URL.Query().Get("user")
 	topic := "ak_public" //public topic
-	MyNodeConfig := DB_GetConfigs()
+
 	sh := shell.NewShell(MyNodeConfig.IPFSAPI)
 
 	msgBody := string(message.Body)
@@ -355,7 +355,7 @@ func MSG_UploadImage(ctx iris.Context) {
 
 	io.Copy(out, file)
 
-	MyNodeConfig := DB_GetConfigs()
+	//MyNodeConfig := DB_GetConfigs()
 	myfile := ""
 	sh := shell.NewShell(MyNodeConfig.IPFSAPI)
 	if ostype == "windows" {
@@ -420,7 +420,7 @@ func MSG_UploadFile(ctx iris.Context) {
 
 	io.Copy(out, file)
 
-	MyNodeConfig := DB_GetConfigs()
+	//MyNodeConfig := DB_GetConfigs()
 
 	sh := shell.NewShell(MyNodeConfig.IPFSAPI)
 	myfile := ""

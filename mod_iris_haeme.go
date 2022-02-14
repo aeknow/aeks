@@ -758,7 +758,7 @@ func ViewContent(ctx iris.Context, hash, pubkey, dbpath, myaid string) {
 	db.Close()
 
 	if len(title) > 0 { //View page and Save to logs
-		MyNodeConfig := DB_GetConfigs()
+		//MyNodeConfig := DB_GetConfigs()
 
 		myTime, err := strconv.ParseInt(pubtime, 10, 64)
 		logtime := strconv.FormatInt(time.Now().Unix(), 10)
@@ -1238,7 +1238,7 @@ func iSaveBlog(ctx iris.Context) {
 	body := html.EscapeString(content)
 	description = html.EscapeString(description)
 
-	MyNodeConfig := DB_GetConfigs()
+	//MyNodeConfig := DB_GetConfigs()
 	sh := shell.NewShell(MyNodeConfig.IPFSAPI)
 
 	dbpath := "./data/accounts/" + accountname + "/public.db"
@@ -1397,7 +1397,7 @@ func iEditBlog(ctx iris.Context) {
 
 	db.Close()
 	fmt.Println(dbpath, hash)
-	MyNodeConfig := DB_GetConfigs()
+	//MyNodeConfig := DB_GetConfigs()
 	sh := shell.NewShell(MyNodeConfig.IPFSAPI)
 	rc, err := sh.Cat("/ipfs/" + hash)
 	ipfsstr, err := copyToString(rc)
@@ -1448,7 +1448,7 @@ func iBlogUploadFile(ctx iris.Context) {
 
 	io.Copy(out, file)
 
-	MyNodeConfig := DB_GetConfigs()
+	//MyNodeConfig := DB_GetConfigs()
 
 	sh := shell.NewShell(MyNodeConfig.IPFSAPI)
 	myfile := ".\\uploads\\" + fname
@@ -1494,7 +1494,7 @@ func iGoAENS(ctx iris.Context) {
 	aensname := ctx.URLParam("aensname")
 	refresh := ctx.URLParam("refresh")
 	gohome := ctx.URLParam("gohome")
-	MyNodeConfig := DB_GetConfigs()
+	//MyNodeConfig := DB_GetConfigs()
 	//Go home firstly
 	if gohome == "gohome" {
 		//ctx.Redirect(MyNodeConfig.IPFSNode + "/ipfs/" + DB_GetConfigItem(accountname, "LastIPFS"))
@@ -1594,7 +1594,7 @@ func AENS_GetData(ctx iris.Context) {
 	accountname := SESS_GetAccountName(ctx)
 	aensname := ctx.URLParam("aensname")
 
-	MyNodeConfig := DB_GetConfigs()
+	//MyNodeConfig := DB_GetConfigs()
 
 	//Do normal AENS resolve
 	fmt.Println("Start Resolve")
@@ -1769,7 +1769,7 @@ func AENS_UpdateOnce(aensname, ipns, ipfs, accountname, block_height string) {
 	db, err := sql.Open("sqlite", dbpath)
 	checkError(err)
 
-	MyNodeConfig := DB_GetConfigs()
+	//MyNodeConfig := DB_GetConfigs()
 	node := naet.NewNode(MyNodeConfig.PublicNode, false)
 	new_block_height, err := node.GetHeight()
 
@@ -1794,7 +1794,7 @@ func AENS_UpdateALLOnce(ctx iris.Context) {
 	sql_insert := ""
 	for rows.Next() {
 		err = rows.Scan(&aensname)
-		MyNodeConfig := DB_GetConfigs()
+		//MyNodeConfig := DB_GetConfigs()
 
 		//Do normal AENS resolve
 		fmt.Println("Start Resolve")

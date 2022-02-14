@@ -212,7 +212,7 @@ func httpGet(url string) string {
 }
 
 func IPFSAPIPost(data, postfunc, accountname string) string {
-	MyNodeConfig := DB_GetConfigs()
+	//MyNodeConfig := DB_GetConfigs()
 	request, _ := http.NewRequest("POST", MyNodeConfig.IPFSAPI+"/api/"+postfunc, strings.NewReader(data))
 	request.Header.Add("content-type", "application/json")
 	resp, err := http.DefaultClient.Do(request)
@@ -447,7 +447,7 @@ func ReadPubsub(topic, accountname string) {
 	//Use IPFS-API
 	fmt.Println("Start listening..." + topic)
 	//curl -X POST "http://127.0.0.1:5001/api/v0/pubsub/sub?arg=<topic>&discover=<value>"
-	MyNodeConfig := DB_GetConfigs()
+	//MyNodeConfig := DB_GetConfigs()
 	sh := ipfsshell.NewShell(MyNodeConfig.IPFSAPI)
 	sub, _ := sh.PubSubSubscribe(topic)
 	for {
@@ -522,7 +522,7 @@ func IsDoPIN(sigAccount, IPFSAddress, IPNSAddress string) bool {
 }
 
 func DoPIN(IPFSAddress, accountname string) {
-	MyNodeConfig := DB_GetConfigs()
+	//MyNodeConfig := DB_GetConfigs()
 
 	sh := ipfsshell.NewShell(MyNodeConfig.IPFSAPI)
 	err := sh.Pin(IPFSAddress)

@@ -751,7 +751,7 @@ func IPFS_UpdateIPNS(accountname, domain string) string {
 	//siteConfigStr := "{\"Title\":\"" + MySiteConfig.Title + "\",\"Subtitle\":\"" + MySiteConfig.Subtitle + "\",\"Description\":\"" + MySiteConfig.Description + "\",\"Author\":\"" + MySiteConfig.Author + "\",\"AuthorDescription\":\"" + MySiteConfig.AuthorDescription + "\",\"Theme\":\"" + MySiteConfig.Theme + "\",\"AENS\":\"" + MySiteConfig.AENS + "\"," + "\"lastten\":\"" + lastTenArticle + "\"}"
 	//metehash, err := sh.Add(bytes.NewBufferString(siteConfigStr))
 
-	MyNodeConfig := DB_GetConfigs()
+	//MyNodeConfig := DB_GetConfigs()
 	node := naet.NewNode(MyNodeConfig.PublicNode, false)
 	block_height, err := node.GetHeight()
 
@@ -870,7 +870,7 @@ func AE_WEB_MakeTranscaction(ctx iris.Context) {
 	}
 
 	// create a connection to a node, represented by *Node
-	MyNodeConfig := DB_GetConfigs()
+	//MyNodeConfig := DB_GetConfigs()
 	node := naet.NewNode(MyNodeConfig.PublicNode, false)
 
 	// create the closures that autofill the correct account nonce and transaction TTL
@@ -922,7 +922,7 @@ func AE_WEB_Wallet(ctx iris.Context) {
 	payload = string(payloadByte)
 
 	amountstr = ctx.URLParam("amount")
-	MyNodeConfig := DB_GetConfigs()
+	//MyNodeConfig := DB_GetConfigs()
 	node := naet.NewNode(MyNodeConfig.PublicNode, false)
 
 	akBalance, err := node.GetAccount(accountname)
@@ -1528,7 +1528,7 @@ func AENS_WEB_ExpertDoUpdateAENS(ctx iris.Context) {
 	if err != nil {
 		fmt.Println(err)
 	}
-	MyNodeConfig := DB_GetConfigs()
+	//MyNodeConfig := DB_GetConfigs()
 	node := naet.NewNode(MyNodeConfig.PublicNode, false)
 	ttlnoncer := transactions.NewTTLNoncer(node)
 
@@ -1636,7 +1636,7 @@ func AENS_WEB_DoUpdateAENS(ctx iris.Context) {
 	if err != nil {
 		fmt.Println(err)
 	}
-	MyNodeConfig := DB_GetConfigs()
+	//MyNodeConfig := DB_GetConfigs()
 	node := naet.NewNode(MyNodeConfig.PublicNode, false)
 	ttlnoncer := transactions.NewTTLNoncer(node)
 	//p := s
@@ -1669,7 +1669,7 @@ func AENS_WEB_DoUpdateAENS(ctx iris.Context) {
 }
 
 func AENS_UpdateAENS(aensname, aensitem, aenspointer, accountname string, ctx iris.Context) {
-	MyNodeConfig := DB_GetConfigs()
+	//MyNodeConfig := DB_GetConfigs()
 	myurl := MyNodeConfig.PublicNode + "/v2/names/" + aensname
 	str := httpGet(myurl)
 	//fmt.Println(myurl)
@@ -1731,7 +1731,7 @@ func AENS_WEB_UpdateAENS(ctx iris.Context) {
 	aensname := ctx.URLParam("aensname")
 	accountname := SESS_GetAccountName(ctx)
 
-	MyNodeConfig := DB_GetConfigs()
+	//MyNodeConfig := DB_GetConfigs()
 	myurl := MyNodeConfig.PublicNode + "/v2/names/" + aensname
 	str := httpGet(myurl)
 	//fmt.Println(myurl)
@@ -1802,7 +1802,7 @@ func AENS_WEB_DoTransferAENS(ctx iris.Context) {
 	toaddress := ctx.FormValue("toaddress")
 	ak := accountname
 
-	MyNodeConfig := DB_GetConfigs()
+	//MyNodeConfig := DB_GetConfigs()
 	node := naet.NewNode(MyNodeConfig.PublicNode, false)
 	ttlnoncer := transactions.NewTTLNoncer(node)
 
@@ -1867,7 +1867,7 @@ func AENS_WEB_DoBidAENS(ctx iris.Context) {
 	myamount := new(big.Int)
 	fmyamount.Int(myamount)
 
-	MyNodeConfig := DB_GetConfigs()
+	//MyNodeConfig := DB_GetConfigs()
 	node := naet.NewNode(MyNodeConfig.PublicNode, false)
 	ttlnoncer := transactions.NewTTLNoncer(node)
 	nameSalt := big.NewInt(0)
@@ -1909,7 +1909,7 @@ func AENS_WEB_DoRegAENS(ctx iris.Context) {
 	myamount := new(big.Int) //regfee
 	fmyamount.Int(myamount)
 
-	MyNodeConfig := DB_GetConfigs()
+	//MyNodeConfig := DB_GetConfigs()
 	//MyNodeConfig.PublicNode = "http://192.168.0.105:6013"
 	//aeconfig.Node.NetworkID = "aec"
 	node := naet.NewNode(MyNodeConfig.PublicNode, false)
@@ -1961,7 +1961,7 @@ func AENS_WEB_QueryAENS(ctx iris.Context) {
 	}
 	accountname := SESS_GetAccountName(ctx)
 
-	MyNodeConfig := DB_GetConfigs()
+	//MyNodeConfig := DB_GetConfigs()
 	myurl := MyNodeConfig.APINode + "/api/aensquery/" + aensname
 	//fmt.Println(myurl)
 	str := httpGet(myurl)
@@ -2029,7 +2029,7 @@ func AENS_getAENSBidding(ctx iris.Context) {
 	}
 	accountname := SESS_GetAccountName(ctx)
 
-	MyNodeConfig := DB_GetConfigs()
+	//MyNodeConfig := DB_GetConfigs()
 
 	node := naet.NewNode(MyNodeConfig.PublicNode, false)
 
@@ -2065,7 +2065,7 @@ func AENS_getAENS(ctx iris.Context) {
 	}
 
 	accountname := SESS_GetAccountName(ctx)
-	MyNodeConfig := DB_GetConfigs()
+	//MyNodeConfig := DB_GetConfigs()
 
 	node := naet.NewNode(MyNodeConfig.PublicNode, false)
 
@@ -2099,7 +2099,7 @@ func AENS_getAENS(ctx iris.Context) {
 
 //get account address from aens name
 func AENS_getAccountFromAENS(aensname, accountname string) string {
-	MyNodeConfig := DB_GetConfigs()
+	//MyNodeConfig := DB_GetConfigs()
 	myurl := MyNodeConfig.PublicNode + "/v2/names/" + aensname
 	str := httpGet(myurl)
 	//fmt.Println(myurl)
@@ -2277,7 +2277,7 @@ func Contrat_WEB_DoDeployToken(ctx iris.Context) {
 	gasPrice := big.NewInt(1000000000)
 
 	byteCode := Contract_getByteCode(contract_name)
-	MyNodeConfig := DB_GetConfigs()
+	//MyNodeConfig := DB_GetConfigs()
 
 	node := naet.NewNode(MyNodeConfig.PublicNode, false)
 	ttlnoncer := transactions.NewTTLNoncer(node)
@@ -2398,7 +2398,7 @@ func Contract_WEB_DoCallContract(ctx iris.Context) {
 	callfunc := ctx.FormValue("callfunc")
 	contract_id := ctx.FormValue("contract_id")
 	contract_name := ctx.FormValue("contract_name")
-	MyNodeConfig := DB_GetConfigs()
+	//MyNodeConfig := DB_GetConfigs()
 
 	node := naet.NewNode(MyNodeConfig.PublicNode, false)
 	ttlnoncer := transactions.NewTTLNoncer(node)
@@ -2513,7 +2513,7 @@ func Contract_WEB_DoDeployContract(ctx iris.Context) {
 	gasPrice := big.NewInt(1000000000)
 
 	byteCode := Contract_getByteCode(contract_name)
-	MyNodeConfig := DB_GetConfigs()
+	//MyNodeConfig := DB_GetConfigs()
 
 	node := naet.NewNode(MyNodeConfig.PublicNode, false)
 	ttlnoncer := transactions.NewTTLNoncer(node)
@@ -2572,7 +2572,7 @@ func Contratc_WEB_TokenTransfer(ctx iris.Context) {
 	fmyamount.Int(myamount)
 
 	transferamount := myamount.String()
-	MyNodeConfig := DB_GetConfigs()
+	//MyNodeConfig := DB_GetConfigs()
 
 	node := naet.NewNode(MyNodeConfig.PublicNode, false)
 	ttlnoncer := transactions.NewTTLNoncer(node)
@@ -2719,7 +2719,7 @@ func Contract_WEB_getToken(ctx iris.Context) {
 		return
 	}
 	accountname := SESS_GetAccountName(ctx)
-	MyNodeConfig := DB_GetConfigs()
+	//MyNodeConfig := DB_GetConfigs()
 
 	node := naet.NewNode(MyNodeConfig.PublicNode, false)
 
@@ -2798,7 +2798,7 @@ func Contract_WEB_Token(ctx iris.Context) {
 	needReg := true
 	ak := ""
 	AccountsLists := ""
-	MyNodeConfig := DB_GetConfigs()
+	//MyNodeConfig := DB_GetConfigs()
 
 	node := naet.NewNode(MyNodeConfig.PublicNode, false)
 

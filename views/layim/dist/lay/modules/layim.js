@@ -1261,7 +1261,7 @@ layui.define(['layer', 'laytpl', 'upload'], function(exports){
       }
     }
     chatMain.scrollTop(chatMain[0].scrollHeight + 1000);
-    chatMain.find('ul li:last').find('img').load(function(){
+    chatMain.find('ul li:last').find('img').on('load',function(){
       chatMain.scrollTop(chatMain[0].scrollHeight+1000);
     });
   };
