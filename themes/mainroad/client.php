@@ -436,12 +436,13 @@
                             
                             if (res.data.indexOf("ping")==-1){
 								console.log("MSG:"+msg)
+								layim.getMessage(JSON.parse(res.data)); //res.data即你发送消息传递的数据（阅读：监听发送的消息）
 								}else{
 									console.log("ping"+res.data)
 									}
 
                             if(res.data != 'pong' && msg.username !='localakak'){		
-                            layim.getMessage(JSON.parse(res.data)); //res.data即你发送消息传递的数据（阅读：监听发送的消息）
+                            //layim.getMessage(JSON.parse(res.data)); //res.data即你发送消息传递的数据（阅读：监听发送的消息）
                             }
 
                         };

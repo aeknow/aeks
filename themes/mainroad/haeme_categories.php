@@ -9,7 +9,7 @@
     <title>{{.Title}} - AEKs</title>
 
     <meta name="description" content="">   
-
+<link rel="stylesheet" href="/views/layim/dist/css/layui.css">
     <link rel="stylesheet" href="/themes/mainroad/css/style.css">
 
     <link rel="shortcut icon" href="/favicon.ico">

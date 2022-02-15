@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>AEK</title>
+  <title>AEKs</title>
   <!-- Tell the browser to be responsive to screen width -->
   <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
   <!-- Bootstrap 3.3.7 -->
@@ -17,6 +17,8 @@
   <!-- AdminLTE Skins. Choose a skin from the css/skins
        folder instead of downloading all of them to reduce the load. -->
  <link rel="stylesheet" href="/views/static/dist/css/skins/skin.css">
+      <link rel="stylesheet" href="/views/layim/dist/css/layui.css">
+
  <link rel="dns-prefetch" href="https://www.aeknow.org">
   <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
   <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
@@ -570,14 +572,8 @@
     </section>
     <!-- /.content -->
   </div>
-  <!-- /.content-wrapper -->
- {{ template "footer" .}}
-  <div class="control-sidebar-bg"></div>
-</div>
-<!-- ./wrapper -->
-
 <!-- jQuery 3 -->
-<script src="/views/static/bower_components/jquery/dist/jquery.min.js"></script>
+<<script src="/views/static/bower_components/jquery/dist/jquery.min.js"></script>
 <!-- Bootstrap 3.3.7 -->
 <script src="/views/static/bower_components/bootstrap/dist/js/bootstrap.min.js"></script>
 <!-- SlimScroll -->
@@ -592,6 +588,14 @@
   $(document).ready(function () {
     $('.sidebar-menu').tree()
   })
-</script>
+</script> 
+ 
+  <!-- /.content-wrapper -->
+ {{ template "footer" .}}
+  <div class="control-sidebar-bg"></div>
+</div>
+<!-- ./wrapper -->
+
+
 </body>
 </html>

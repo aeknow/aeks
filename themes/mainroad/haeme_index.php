@@ -9,6 +9,7 @@
     <title>{{.Site.Title}} - AEKs</title>
 
     <meta name="description" content="{{.Site.Description}}">
+     <link rel="stylesheet" href="/views/layim/dist/css/layui.css">
     <link rel="stylesheet" href="/themes/mainroad/css/style.css">
 
     <link rel="alternate" type="application/rss+xml" href="/index.xml" title="Mainroad">

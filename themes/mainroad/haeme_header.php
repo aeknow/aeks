@@ -53,6 +53,15 @@
 		</li>
 		
 		-->
+		
+		<li class="menu__item" >
+			<a class="menu__link" href="/post/hugoisforlovers/">
+				
+				<span class="menu__text">+Video</span>
+				
+			</a>
+		</li>
+	
 	</ul>
 </nav>
 
