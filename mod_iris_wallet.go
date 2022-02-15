@@ -626,6 +626,8 @@ func SESS_GetAccount(ctx iris.Context) *account.Account {
 
 	}
 
+	db.Close()
+
 	return myAccount
 
 }
