@@ -5,6 +5,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	crypto_rand "crypto/rand"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -233,7 +234,10 @@ func PubSub_Listening(channel, accountname string, signAccount account.Account) 
 				}
 			} else {
 				//_, err = ws.Write(r.Data)
-				DB_RecordActiveInfo(string(r.Data))
+				if sigVerify {
+					DB_RecordActiveInfo(accountname, msg.Account)
+				}
+
 			}
 		} else {
 			//fmt.Println("self msg:" + string(r.Data))
@@ -244,10 +248,6 @@ func PubSub_Listening(channel, accountname string, signAccount account.Account) 
 	}
 	//ws.Close()
 
-}
-
-func DB_RecordActiveInfo(pingInfo string) {
-	fmt.Println("process income ping :" + pingInfo)
 }
 
 //handle received websocket message,broadcast or send to pubsub
@@ -472,11 +472,6 @@ func MSG_OpenGroupMSG(groupid string, message string) string {
 	return string(MSG_AesDecryptCBC(encrypted, key))
 }
 
-func DB_GetGroupKey(groupid string) string {
-	//TODO:get group key from list data, which can be set by the owner
-	return "0123456789abcdef"
-}
-
 //seal message with the target address
 func MSG_SealTo(ToAddress, Message string) string {
 	recipientPublicKey, _, _ := box.GenerateKey(crypto_rand.Reader) //assume a key
@@ -553,4 +548,35 @@ func pkcs5UnPadding(origData []byte) []byte {
 	length := len(origData)
 	unpadding := int(origData[length-1])
 	return origData[:(length - unpadding)]
+}
+
+func DB_GetGroupKey(groupid string) string {
+	//TODO:get group key from list data, which can be set by the owner
+	return "0123456789abcdef"
+}
+
+func DB_RecordActiveInfo(accountname, activeaccount string) {
+	dbpath := "./data/accounts/" + accountname + "/chaet.db"
+	db, err := sql.Open("sqlite", dbpath)
+	checkError(err)
+	sql_check := "SELECT lastactive FROM users WHERE id='" + activeaccount + "'"
+	rows, err := db.Query(sql_check)
+	checkError(err)
+
+	NeedInsert := true
+	for rows.Next() {
+		NeedInsert = false
+	}
+	lastactive := strconv.FormatInt(time.Now().Unix(), 10)
+	if NeedInsert {
+		sql_insert := "INSERT INTO users(id,lastactive) VALUES('" + activeaccount + "','" + lastactive + "')"
+		db.Exec(sql_insert)
+		fmt.Println("Insert new active user: " + activeaccount)
+	} else {
+		sql_update := "UPDATE users set lastactive='" + lastactive + "' WHERE id='" + activeaccount + "'"
+		db.Exec(sql_update)
+		fmt.Println("Update active user: " + activeaccount)
+	}
+
+	db.Close()
 }

@@ -1208,9 +1208,52 @@ CREATE TABLE if not exists "logs"(
 	db, _ = sql.Open("sqlite", dbpath)
 	sql_index = `CREATE VIRTUAL TABLE pages USING fts5(title, author, authorname,keywords,abstract, body,source,id,hash);`
 	db.Exec(sql_index)
+
+	//create chaet database
+	dbpath = "file:./data/accounts/" + pubkey + "/chaet.db?auto_vacuum=1"
+	db, _ = sql.Open("sqlite", dbpath)
+	//Create main data table for messages,body for full text search
+	sql_msg := `CREATE VIRTUAL TABLE msgs USING fts5(from, to, body,raw,mtype, pubtime);`
+	db.Exec(sql_msg)
+
+	sql_user := `
+CREATE TABLE if not exists "users"(
+"uid" INTEGER PRIMARY KEY AUTOINCREMENT,
+"username" TEXT NULL,
+"id" TEXT NULL,
+"avatar" TEXT NULL,
+"sign" TEXT NULL,
+"lastactive" TEXT NULL,
+"isfriend" bool NULL,
+"status" TEXT NULL,
+"groupname" TEXT NULL,
+"aens" TEXT NULL,
+"description" TEXT NULL,
+"remark" TEXT NULL
+);
+`
+	db.Exec(sql_user)
+
+	sql_group := `
+CREATE TABLE if not exists "groups"(
+"gid" INTEGER PRIMARY KEY AUTOINCREMENT,
+"groupname" TEXT NULL,
+"id" TEXT NULL,
+"groupkey" TEXT NULL,
+"avatar" TEXT NULL,
+"sign" TEXT NULL,
+"status" TEXT NULL,
+"members" TEXT NULL,
+"aens" TEXT NULL,
+"description" TEXT NULL,
+"remark" TEXT NULL
+);
+`
+	db.Exec(sql_group)
 	db.Close()
 
 }
+
 func DB_UpdateConfigs(pubkey, item, value string) {
 	//update or insert configs
 	dbpath := "./data/accounts/" + pubkey + "/config.db"
