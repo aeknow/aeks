@@ -217,12 +217,17 @@ func PubSub_Listening(channel, accountname string, signAccount account.Account) 
 					}
 
 					msgstr := ""
-					pubtime := strconv.FormatInt(time.Now().UnixNano()/1e6, 10)
+					pubtime := strconv.FormatInt(int64(s.To.Timestamp), 10)
 
 					if s.To.Groupname == "" {
 						msgstr = "{\"username\":\"" + s.Mine.Username + "\",\"avatar\":\"" + s.Mine.Avatar + "\",\"id\":\"" + s.Mine.Id + "\",\"type\":\"friend\",\"content\":\"" + strings.Replace(html.EscapeString(s.Mine.Content), "\n", "\\n", -1) + "\",\"cid\":0,\"mine\":false,\"fromid\":\"" + s.Mine.Id + "\",\"timestamp\":" + pubtime + "}"
+
+						DB_RecordMsgs(accountname, s.Mine.Id, s.To.Id, DB_IndexCJKText(strings.Replace(html.EscapeString(s.Mine.Content), "\n", "\\n", -1), segmenter), string(r.Data), "friend", pubtime)
+
 					} else {
 						msgstr = "{\"username\":\"" + s.Mine.Username + "\",\"groupname\":\"" + s.To.Groupname + "\",\"avatar\":\"" + s.Mine.Avatar + "\",\"id\":\"" + s.To.Id + "\",\"type\":\"group\",\"content\":\"" + strings.Replace(html.EscapeString(s.Mine.Content), "\n", "\\n", -1) + "\",\"cid\":0,\"mine\":false,\"fromid\":\"" + s.Mine.Id + "\",\"timestamp\":" + pubtime + ",\"name\":\"" + s.To.Name + "\"}"
+						DB_RecordMsgs(accountname, s.Mine.Id, s.To.Id, DB_IndexCJKText(strings.Replace(html.EscapeString(s.Mine.Content), "\n", "\\n", -1), segmenter), string(r.Data), "group", pubtime)
+
 					}
 
 					_, err = ws.Write([]byte(msgstr))
@@ -239,9 +244,14 @@ func PubSub_Listening(channel, accountname string, signAccount account.Account) 
 				}
 
 			}
-		} else {
-			//fmt.Println("self msg:" + string(r.Data))
-			fmt.Println("self msg")
+		} else { //Record msgs out
+
+			fmt.Println("self ping:" + string(r.Data))
+
+			if sigVerify {
+				DB_RecordActiveInfo(accountname, msg.Account)
+			}
+
 		}
 		//	}
 
@@ -254,7 +264,7 @@ func PubSub_Listening(channel, accountname string, signAccount account.Account) 
 func WebSocket_handleChatMsg(message iriswebsocket.Message, nsConn *iriswebsocket.NSConn) {
 
 	accountname := nsConn.Conn.Socket().Request().URL.Query().Get("user")
-	topic := "ak_public" //public topic
+	publicChannel := "ak_public" //public topic
 
 	sh := shell.NewShell(MyNodeConfig.IPFSAPI)
 
@@ -269,11 +279,12 @@ func WebSocket_handleChatMsg(message iriswebsocket.Message, nsConn *iriswebsocke
 	var msg Msg
 	err := json.Unmarshal([]byte(msgBody), &msg)
 	if err != nil {
+		fmt.Println("umarshal err: ")
 		fmt.Println(err)
 	}
 
 	//not ping msg, and not plain local msg
-	if msg.Mtype != "ping" && !strings.Contains(msgBody, "sername") {
+	if msg.Mtype != "ping" && !strings.Contains(msgBody, "sername") && msg.Mtype != "online" {
 		//fmt.Println("encoded body:" + string(msg.Body))
 		var s ChatMsg
 		bodyStr, _ := base64.StdEncoding.DecodeString(msg.Body)
@@ -285,14 +296,22 @@ func WebSocket_handleChatMsg(message iriswebsocket.Message, nsConn *iriswebsocke
 		if s.Mine.Id == accountname {
 			fmt.Println("Publish message to channel " + s.To.Id)
 
+			pubtime := strconv.FormatInt(int64(s.To.Timestamp), 10)
+
 			if msg.Mtype == "group" {
-				//sealed with the target group passwords
-				err = sh.PubSubPublish(s.To.Id, MSG_SealGroupMSG(s.To.Id, msgBody))
+				//sealed with the target group passwords and record to the database
+				rawMSG := MSG_SealGroupMSG(s.To.Id, msgBody)
+				err = sh.PubSubPublish(s.To.Id, rawMSG)
+				DB_RecordMsgs(accountname, s.Mine.Id, s.To.Id, DB_IndexCJKText(strings.Replace(html.EscapeString(s.Mine.Content), "\n", "\\n", -1), segmenter), msgBody, "group", pubtime)
 			}
 
 			if msg.Mtype == "private" {
-				//sealed with the target channel accounts
-				err = sh.PubSubPublish(s.To.Id, MSG_SealTo(s.To.Id, msgBody))
+				//sealed with the target user's channel accounts and record to the database
+				rawMSG := MSG_SealTo(s.To.Id, msgBody)
+				//fmt.Println(msgBody)
+				err = sh.PubSubPublish(s.To.Id, rawMSG)
+				DB_RecordMsgs(accountname, s.Mine.Id, s.To.Id, DB_IndexCJKText(strings.Replace(html.EscapeString(s.Mine.Content), "\n", "\\n", -1), segmenter), msgBody, "friend", pubtime)
+
 			}
 
 			//fmt.Println("Sealed: " + MSG_SealTo(s.To.Id, msgBody))
@@ -306,8 +325,8 @@ func WebSocket_handleChatMsg(message iriswebsocket.Message, nsConn *iriswebsocke
 		}
 	} else {
 		if msg.Account == accountname && !strings.Contains(msgBody, "sername") {
-			err := sh.PubSubPublish(topic, msgBody)
-			fmt.Println("braoadcast ping to channel " + topic)
+			err := sh.PubSubPublish(publicChannel, msgBody)
+			fmt.Println("broadcast ping to channel " + publicChannel)
 			if err != nil {
 				fmt.Println("Braoadcast ping failed.")
 
@@ -320,7 +339,14 @@ func WebSocket_handleChatMsg(message iriswebsocket.Message, nsConn *iriswebsocke
 
 	}
 
-	nsConn.Conn.Server().Broadcast(nsConn, message)
+	if msg.Mtype == "online" && msg.Account == accountname {
+		//TODO:get messages from database and broadcast
+		go DB_GetUnreadMsgs(accountname, message, nsConn)
+	} else {
+		nsConn.Conn.Server().Broadcast(nsConn, message)
+		fmt.Println("Default cast:" + string(message.Body))
+	}
+
 }
 
 func MSG_UploadImage(ctx iris.Context) {
@@ -494,6 +520,10 @@ func MSG_SealTo(ToAddress, Message string) string {
 
 //open sealed message
 func MSG_OpenMSG(Message string, signAccount account.Account) string {
+	fmt.Println(Message)
+
+	fmt.Println(signAccount.Address)
+
 	recipientPublicKey, openPrivateKey, _ := box.GenerateKey(crypto_rand.Reader) //assume a key
 
 	toPublicKey, _ := aebinary.Decode(signAccount.Address)
@@ -513,7 +543,7 @@ func MSG_OpenMSG(Message string, signAccount account.Account) string {
 	openedMsg, ok := box.OpenAnonymous(nil, encrypted, recipientPublicKey, openPrivateKey)
 
 	if !ok {
-		fmt.Println("failed to open box")
+		fmt.Println("failed to open private box")
 	}
 
 	return string(openedMsg)
@@ -563,6 +593,7 @@ func DB_RecordActiveInfo(accountname, activeaccount string) {
 	rows, err := db.Query(sql_check)
 	checkError(err)
 
+	fmt.Println("Record active of " + activeaccount)
 	NeedInsert := true
 	for rows.Next() {
 		NeedInsert = false
@@ -579,4 +610,100 @@ func DB_RecordActiveInfo(accountname, activeaccount string) {
 	}
 
 	db.Close()
+}
+
+//Record private and group messages to the database
+func DB_RecordMsgs(accountname, from, to, body, raw, mtype, pubtime string) {
+	dbpath := "./data/accounts/" + accountname + "/chaet.db"
+	db, err := sql.Open("sqlite", dbpath)
+	checkError(err)
+
+	sql_insert := "INSERT INTO msgs(fromid, toid, body,raw,mtype, pubtime) VALUES('" + from + "','" + to + "','" + body + "','" + raw + "','" + mtype + "','" + pubtime + "')"
+
+	fmt.Println(sql_insert)
+	_, err = db.Query(sql_insert)
+	checkError(err)
+
+	db.Close()
+}
+
+//get the messages that are not broadcasted, then rebroadcast to the UI
+func DB_GetUnreadMsgs(accountname string, message iriswebsocket.Message, nsConn *iriswebsocket.NSConn) {
+
+	time.Sleep(time.Duration(1) * time.Second)
+	var origin = "http://127.0.0.1:8888/"
+	var url = "ws://127.0.0.1:8888/websocket"
+	ws, err := websocket.Dial(url, "", origin)
+
+	if err != nil {
+		fmt.Println("Rebroadcast websocket error")
+	}
+
+	dbpath := "./data/accounts/" + accountname + "/chaet.db"
+	db, err := sql.Open("sqlite", dbpath)
+	checkError(err)
+	sql_check := "SELECT lastactive FROM users WHERE id='" + accountname + "'"
+	rows, err := db.Query(sql_check)
+	checkError(err)
+
+	lastactive := "9999014887789"
+
+	for rows.Next() {
+		err = rows.Scan(&lastactive)
+	}
+
+	sql_getmsg := "SELECT raw,toid FROM msgs WHERE pubtime > '" + lastactive + "'"
+	rows, err = db.Query(sql_getmsg)
+	checkError(err)
+
+	rawmsg := ""
+	toid := ""
+	for rows.Next() {
+		err = rows.Scan(&rawmsg, &toid)
+
+		var msg Msg
+		err := json.Unmarshal([]byte(rawmsg), &msg)
+		if err != nil {
+			fmt.Println("umarshal err: ")
+			fmt.Println(err)
+		}
+
+		var s ChatMsg
+		bosyStr, _ := base64.StdEncoding.DecodeString(msg.Body)
+		err = json.Unmarshal(bosyStr, &s)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		fmt.Println("msgto:" + s.To.Id)
+
+		//I am the receiver or group message and I am not the sender
+		if (s.To.Id == accountname || s.To.Groupname != "") && s.Mine.Id != accountname {
+
+			if err != nil {
+				fmt.Println("error:", err)
+			}
+
+			msgstr := ""
+			pubtime := strconv.FormatInt(int64(s.To.Timestamp), 10)
+
+			if s.To.Groupname == "" {
+				msgstr = "{\"username\":\"" + s.Mine.Username + "\",\"avatar\":\"" + s.Mine.Avatar + "\",\"id\":\"" + s.Mine.Id + "\",\"type\":\"friend\",\"content\":\"" + strings.Replace(html.EscapeString(s.Mine.Content), "\n", "\\n", -1) + "\",\"cid\":0,\"mine\":false,\"fromid\":\"" + s.Mine.Id + "\",\"timestamp\":" + pubtime + "}"
+			} else {
+				msgstr = "{\"username\":\"" + s.Mine.Username + "\",\"groupname\":\"" + s.To.Groupname + "\",\"avatar\":\"" + s.Mine.Avatar + "\",\"id\":\"" + s.To.Id + "\",\"type\":\"group\",\"content\":\"" + strings.Replace(html.EscapeString(s.Mine.Content), "\n", "\\n", -1) + "\",\"cid\":0,\"mine\":false,\"fromid\":\"" + s.Mine.Id + "\",\"timestamp\":" + pubtime + ",\"name\":\"" + s.To.Name + "\"}"
+			}
+
+			_, err = ws.Write([]byte(msgstr))
+			time.Sleep(time.Duration(100) * time.Millisecond)
+			//fmt.Println("msgdto:" + s.To.Id + "::" + msgstr)
+			if err != nil {
+				fmt.Println(err)
+			}
+			fmt.Println("brocast from db: " + msgstr)
+		}
+
+	}
+	db.Close()
+
+	DB_RecordActiveInfo(accountname, accountname)
 }

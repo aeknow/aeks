@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/aeternity/aepp-sdk-go/v9/account"
 	"github.com/huichen/sego"
 
 	"github.com/kataras/iris/v12"
@@ -12,6 +13,7 @@ import (
 
 var segmenter sego.Segmenter
 var MyNodeConfig AeknowConfig
+var signGlobalAccount account.Account
 
 func main() {
 

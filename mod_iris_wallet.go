@@ -576,7 +576,7 @@ func AE_WEB_CheckLogin(ctx iris.Context) {
 		//MyIPFSConfig = getIPFSConfig() //读取IPFS节点配置
 		//MySiteConfig = getSiteConfig() //读取网站设置
 		//lastIPFS = ""
-
+		signGlobalAccount = *myAccount
 		//go bootIPFS()
 		NodeOnline = true
 		AE_WEB_loginedFile()
@@ -1213,7 +1213,7 @@ CREATE TABLE if not exists "logs"(
 	dbpath = "file:./data/accounts/" + pubkey + "/chaet.db?auto_vacuum=1"
 	db, _ = sql.Open("sqlite", dbpath)
 	//Create main data table for messages,body for full text search
-	sql_msg := `CREATE VIRTUAL TABLE msgs USING fts5(from, to, body,raw,mtype, pubtime);`
+	sql_msg := `CREATE VIRTUAL TABLE msgs USING fts5(fromid, toid, body,raw,mtype, pubtime);`
 	db.Exec(sql_msg)
 
 	sql_user := `
