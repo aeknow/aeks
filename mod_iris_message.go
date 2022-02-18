@@ -139,6 +139,39 @@ Loop:
 	go PubSub_Listening("group_bKVvB7iFJKuzH6EvpzLfWKFUpG3qFxUvj8eGwdkFEb7TCTwP8_1", accountname, signAccount) //test group channel
 	go PubSub_Listening("group_fCCw1JEkvXdztZxk8FRGNAkvmArhVeow89e64yX4AxbCPrVh5_2", accountname, signAccount) //test group channel
 
+	//If I am acting as a proxy, start listening the proxy channel
+	if MSG_AmIProxy(accountname) {
+		go PubSub_ProxyListening(MyNodeConfig.PubsubProxy, accountname, signAccount)
+	}
+}
+
+//start listening a single channel, decode&process the messages
+func PubSub_ProxyListening(channel, accountname string, signAccount account.Account) {
+	sh := shell.NewShell(MyNodeConfig.IPFSAPI)
+	sub, err := sh.PubSubSubscribe(channel)
+
+	if err != nil {
+		fmt.Println("Sub message error", err)
+	}
+
+	for {
+		r, err := sub.Next()
+		if err != nil {
+			fmt.Println("Message error", err)
+		}
+
+		//put messages to proxy
+		if !strings.Contains(string(r.Data), "put") {
+
+		}
+
+		//get messages from proxy
+		if !strings.Contains(string(r.Data), "get") {
+
+		}
+
+	}
+
 }
 
 //start listening a single channel, decode&process the messages
@@ -303,6 +336,10 @@ func WebSocket_handleChatMsg(message iriswebsocket.Message, nsConn *iriswebsocke
 				rawMSG := MSG_SealGroupMSG(s.To.Id, msgBody)
 				err = sh.PubSubPublish(s.To.Id, rawMSG)
 				DB_RecordMsgs(accountname, s.Mine.Id, s.To.Id, DB_IndexCJKText(strings.Replace(html.EscapeString(s.Mine.Content), "\n", "\\n", -1), segmenter), msgBody, "group", pubtime)
+
+				if MSG_CheckProxy(accountname, s.Mine.Id, s.To.Id) {
+					err = sh.PubSubPublish(MyNodeConfig.PubsubProxy, s.To.Id+":"+rawMSG)
+				}
 			}
 
 			if msg.Mtype == "private" {
@@ -312,6 +349,9 @@ func WebSocket_handleChatMsg(message iriswebsocket.Message, nsConn *iriswebsocke
 				err = sh.PubSubPublish(s.To.Id, rawMSG)
 				DB_RecordMsgs(accountname, s.Mine.Id, s.To.Id, DB_IndexCJKText(strings.Replace(html.EscapeString(s.Mine.Content), "\n", "\\n", -1), segmenter), msgBody, "friend", pubtime)
 
+				if MSG_CheckProxy(accountname, s.Mine.Id, s.To.Id) {
+					err = sh.PubSubPublish(MyNodeConfig.PubsubProxy, s.To.Id+":"+rawMSG)
+				}
 			}
 
 			//fmt.Println("Sealed: " + MSG_SealTo(s.To.Id, msgBody))
@@ -549,6 +589,7 @@ func MSG_OpenMSG(Message string, signAccount account.Account) string {
 	return string(openedMsg)
 }
 
+//Encrypt messages with AES
 func MSG_AesEncryptCBC(origData []byte, key []byte) (encrypted []byte) {
 	// 分组秘钥
 	// NewCipher该函数限制了输入key的长度必须为16, 24或者32
@@ -560,6 +601,8 @@ func MSG_AesEncryptCBC(origData []byte, key []byte) (encrypted []byte) {
 	blockMode.CryptBlocks(encrypted, origData)                  // 加密
 	return encrypted
 }
+
+//Decrypt messages with AES
 func MSG_AesDecryptCBC(encrypted []byte, key []byte) (decrypted []byte) {
 	block, _ := aes.NewCipher(key)                              // 分组秘钥
 	blockSize := block.BlockSize()                              // 获取秘钥块的长度
@@ -580,6 +623,19 @@ func pkcs5UnPadding(origData []byte) []byte {
 	return origData[:(length - unpadding)]
 }
 
+//Check if we should use the proxy mode for the offline messages
+func MSG_CheckProxy(accountname, fromid, toid string) bool {
+	//TODO:proxy mode or offline mode
+	return true
+}
+
+//Check if we should use the proxy mode for the offline messages
+func MSG_AmIProxy(accountname string) bool {
+	//TODO:proxy mode or offline mode
+	return true
+}
+
+//Get the secret key of each group, the length MUST be 16, 24 or 32
 func DB_GetGroupKey(groupid string) string {
 	//TODO:get group key from list data, which can be set by the owner
 	return "0123456789abcdef"

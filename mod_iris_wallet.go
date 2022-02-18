@@ -93,11 +93,12 @@ type PageLogin struct {
 }
 
 type AeknowConfig struct {
-	PublicNode string
-	APINode    string
-	IPFSNode   string
-	IPFSAPI    string
-	LocalWeb   string
+	PublicNode  string
+	APINode     string
+	IPFSNode    string
+	IPFSAPI     string
+	LocalWeb    string
+	PubsubProxy string
 }
 
 //var myAccount account.Account
@@ -576,7 +577,7 @@ func AE_WEB_CheckLogin(ctx iris.Context) {
 		//MyIPFSConfig = getIPFSConfig() //读取IPFS节点配置
 		//MySiteConfig = getSiteConfig() //读取网站设置
 		//lastIPFS = ""
-		signGlobalAccount = *myAccount
+		//signGlobalAccount = *myAccount
 		//go bootIPFS()
 		NodeOnline = true
 		AE_WEB_loginedFile()
@@ -1382,8 +1383,8 @@ func DB_GetConfigs() AeknowConfig {
 			NodeConfig.IPFSAPI = value
 		case "LocalWeb":
 			NodeConfig.LocalWeb = value
-		//case "MyAENS":
-		//MyAENS = value
+		case "PubsubProxy":
+			NodeConfig.PubsubProxy = value
 		//case "LastIPFS":
 		//lastIPFS = value
 		default:
