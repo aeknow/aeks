@@ -12,6 +12,7 @@ import (
 	"html"
 	"html/template"
 	"io"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -512,7 +513,7 @@ func MSG_UploadFile(ctx iris.Context) {
 		"code": 0 
 		,"msg": "" 
 		,"data": {
-		  "src": "` + MyNodeConfig.IPFSNode + `/ipfs/` + cid + `" 
+		  "src": "/getipfsfile?cid=` + cid + `&name="` + url.QueryEscape(fname) + ` 
 		  ,"name": "` + fname + `"
 		}
 	  }`
