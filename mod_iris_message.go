@@ -12,6 +12,7 @@ import (
 	"html"
 	"html/template"
 	"io"
+	"net/http"
 	"net/url"
 	"os"
 	"strconv"
@@ -101,7 +102,6 @@ func Chaet_SignJson(ctx iris.Context) {
 	//accountname := SESS_GetAccountName(ctx)
 
 	body := ctx.FormValue("body")
-
 	MysignAccount := SESS_GetAccount(ctx)
 	signature := base64.StdEncoding.EncodeToString(MysignAccount.Sign([]byte(body)))
 
@@ -508,12 +508,12 @@ func MSG_UploadFile(ctx iris.Context) {
 		fmt.Println("Add file failed.", err)
 	}
 	pubfile.Close()
-
+	//fmt.Println("cid." + cid)
 	uploadedFileValue := `{
 		"code": 0 
 		,"msg": "" 
 		,"data": {
-		  "src": "/getipfsfile?cid=` + cid + `&name="` + url.QueryEscape(fname) + ` 
+		  "src": "/getipfsfile?cid=` + cid + `&name=` + url.QueryEscape(fname) + `" 
 		  ,"name": "` + fname + `"
 		}
 	  }`
@@ -521,7 +521,7 @@ func MSG_UploadFile(ctx iris.Context) {
 	if err != nil {
 		fmt.Println("Delete uplaod file failed.", err)
 	}
-
+	fmt.Println("value." + uploadedFileValue)
 	ctx.Writef(uploadedFileValue)
 }
 
@@ -634,6 +634,37 @@ func MSG_CheckProxy(accountname, fromid, toid string) bool {
 func MSG_AmIProxy(accountname string) bool {
 	//TODO:proxy mode or offline mode
 	return true
+}
+
+//Download ipfs files from chat or pages
+func MSG_GetIPFSFile(ctx iris.Context) {
+	if !checkLogin(ctx) {
+		//	ctx.Redirect("/")
+	}
+
+	cid := ctx.URLParam("cid")
+	name := ctx.URLParam("name")
+
+	url := MyNodeConfig.IPFSNode + "/ipfs/" + cid
+
+	fmt.Println(url + "==>" + name)
+	res, err := http.Get(url)
+	if err != nil {
+		panic(err)
+	}
+	tmpfile := "./uploads/" + name
+	f, err := os.Create(tmpfile)
+	if err != nil {
+		panic(err)
+	}
+	io.Copy(f, res.Body)
+
+	ctx.SendFile(tmpfile, name)
+
+	err = os.Remove(tmpfile)
+	if err != nil {
+		fmt.Println("Delete downloaded file failed.", err)
+	}
 }
 
 //Get the secret key of each group, the length MUST be 16, 24 or 32
