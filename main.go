@@ -107,6 +107,7 @@ func main() {
 	app.Post("/signjson", Chaet_SignJson)
 	app.Post("/uploadimage", MSG_UploadImage)
 	app.Post("/uploadfile", MSG_UploadFile)
+	app.Get("/getipfsfile", MSG_GetIPFSFile)
 
 	ws := websocket.New(websocket.DefaultGorillaUpgrader, websocket.Events{
 		websocket.OnNativeMessage: func(nsConn *websocket.NSConn, msg websocket.Message) error {
