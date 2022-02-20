@@ -77,6 +77,11 @@ type ReceiverMsg struct {
 	Name      string
 }
 
+type ReceiptMSG struct {
+	Account string
+	Receipt string
+}
+
 func Chaet_UI(ctx iris.Context) {
 	accountname := SESS_GetAccountName(ctx)
 	//MysignAccount := SESS_GetAccount(ctx)
@@ -144,12 +149,24 @@ Loop:
 	if MSG_AmIProxy(accountname) {
 		go PubSub_ProxyListening(MyNodeConfig.PubsubProxy, accountname, signAccount)
 	}
+
+	///ip4/104.156.239.14/udp/4001/quic/p2p/12D3KooWEwbBdqgotFPBN6ik8SrN1hyYZjxzbKo3Dme1JDJ22dzN
+	//curl -X POST "http://127.0.0.1:5001/api/v0/swarm/peering/add?arg=<address>"
+	IPFSAPIPost("", "v0/swarm/peering?add=/ip4/104.156.239.14/udp/4001/quic/p2p/12D3KooWEwbBdqgotFPBN6ik8SrN1hyYZjxzbKo3Dme1JDJ22dzN", accountname)
+
 }
 
 //start listening a single channel, decode&process the messages
 func PubSub_ProxyListening(channel, accountname string, signAccount account.Account) {
 	sh := shell.NewShell(MyNodeConfig.IPFSAPI)
 	sub, err := sh.PubSubSubscribe(channel)
+	lastmsg := MSG_GetLatestMSGTimestamp(accountname)
+	signed := base64.StdEncoding.EncodeToString(signAccount.Sign([]byte(lastmsg)))
+
+	//send an online signal to the msg proxy
+	//{"Account":"ak_xxxxx","LastMsg":"13982817272","Sig":"abcdefr"}
+	err = sh.PubSubPublish(MyNodeConfig.PubsubProxy, "{\"Account\":\""+accountname+"\",\"LastMsg\":\""+lastmsg+"\",\"Sig\":\""+signed+"\"}")
+	checkError(err)
 
 	if err != nil {
 		fmt.Println("Sub message error", err)
@@ -176,6 +193,7 @@ func PubSub_ProxyListening(channel, accountname string, signAccount account.Acco
 }
 
 //start listening a single channel, decode&process the messages
+//msgs should be unique structure: {sig:ddd,body:XXX,account:ak_xxx,mtype:xxx}
 func PubSub_Listening(channel, accountname string, signAccount account.Account) {
 	var origin = "http://127.0.0.1:8888/"
 	var url = "ws://127.0.0.1:8888/websocket"
@@ -232,62 +250,81 @@ func PubSub_Listening(channel, accountname string, signAccount account.Account) 
 			fmt.Println("MSG UN-VERIFIED")
 		}
 
-		if !strings.Contains(string(r.Data), accountname) {
-			if !strings.Contains(string(r.Data), "ping") {
-				var s ChatMsg
-				bosyStr, _ := base64.StdEncoding.DecodeString(msg.Body)
-				err = json.Unmarshal(bosyStr, &s)
+		if msg.Mtype == "receipt" {
+			var receipt ReceiptMSG
+			err = json.Unmarshal(r.Data, &receipt)
+			if err != nil {
+				fmt.Println(err)
+			}
+			fmt.Println("got receipt: " + string(r.Data))
+			//check the sent message status
+			MSG_CheckMSGStatus(receipt)
+		}
+
+		if msg.Mtype == "ping" {
+			if sigVerify {
+				DB_RecordActiveInfo(accountname, msg.Account)
+			}
+		}
+
+		//if !strings.Contains(string(r.Data), accountname) {
+		if msg.Account != accountname && (msg.Mtype == "private" || msg.Mtype == "group") {
+			//	if !strings.Contains(string(r.Data), "ping") {
+
+			var s ChatMsg
+			bosyStr, _ := base64.StdEncoding.DecodeString(msg.Body)
+			err = json.Unmarshal(bosyStr, &s)
+			if err != nil {
+				fmt.Println(err)
+			}
+
+			fmt.Println("msgto:" + s.To.Id)
+
+			//I am the receiver or group message and I am not the sender
+			if (s.To.Id == accountname || s.To.Groupname != "") && s.Mine.Id != accountname {
+
+				if err != nil {
+					fmt.Println("error:", err)
+				}
+
+				msgstr := ""
+				pubtime := strconv.FormatInt(int64(s.To.Timestamp), 10)
+
+				if s.To.Groupname == "" { //private msg
+					msgstr = "{\"username\":\"" + s.Mine.Username + "\",\"avatar\":\"" + s.Mine.Avatar + "\",\"id\":\"" + s.Mine.Id + "\",\"type\":\"friend\",\"content\":\"" + strings.Replace(html.EscapeString(s.Mine.Content), "\n", "\\n", -1) + "\",\"cid\":0,\"mine\":false,\"fromid\":\"" + s.Mine.Id + "\",\"timestamp\":" + pubtime + "}"
+					//{sig:ddd,body:XXX,account:ak_xxx,mtype:xxx}
+					signature := base64.StdEncoding.EncodeToString(signAccount.Sign([]byte(pubtime)))
+
+					receiptMsg := "{\"Signature\":\"" + signature + "\",\"Body\":\"" + pubtime + "\",\"Account\":\"" + accountname + "\",\"Mtype\":\"receipt\"}"
+
+					err = sh.PubSubPublish(s.Mine.Id, MSG_SealTo(s.Mine.Id, receiptMsg)) //send the receipt of the msg
+					checkError(err)
+					DB_RecordMsgs(accountname, s.Mine.Id, s.To.Id, DB_IndexCJKText(strings.Replace(html.EscapeString(s.Mine.Content), "\n", "\\n", -1), segmenter), string(r.Data), "friend", pubtime)
+
+				} else {
+					msgstr = "{\"username\":\"" + s.Mine.Username + "\",\"groupname\":\"" + s.To.Groupname + "\",\"avatar\":\"" + s.Mine.Avatar + "\",\"id\":\"" + s.To.Id + "\",\"type\":\"group\",\"content\":\"" + strings.Replace(html.EscapeString(s.Mine.Content), "\n", "\\n", -1) + "\",\"cid\":0,\"mine\":false,\"fromid\":\"" + s.Mine.Id + "\",\"timestamp\":" + pubtime + ",\"name\":\"" + s.To.Name + "\"}"
+					DB_RecordMsgs(accountname, s.Mine.Id, s.To.Id, DB_IndexCJKText(strings.Replace(html.EscapeString(s.Mine.Content), "\n", "\\n", -1), segmenter), string(r.Data), "group", pubtime)
+
+				}
+
+				_, err = ws.Write([]byte(msgstr))
+
+				//fmt.Println("msgdto:" + s.To.Id + "::" + msgstr)
 				if err != nil {
 					fmt.Println(err)
 				}
-
-				fmt.Println("msgto:" + s.To.Id)
-
-				//I am the receiver or group message and I am not the sender
-				if (s.To.Id == accountname || s.To.Groupname != "") && s.Mine.Id != accountname {
-
-					if err != nil {
-						fmt.Println("error:", err)
-					}
-
-					msgstr := ""
-					pubtime := strconv.FormatInt(int64(s.To.Timestamp), 10)
-
-					if s.To.Groupname == "" {
-						msgstr = "{\"username\":\"" + s.Mine.Username + "\",\"avatar\":\"" + s.Mine.Avatar + "\",\"id\":\"" + s.Mine.Id + "\",\"type\":\"friend\",\"content\":\"" + strings.Replace(html.EscapeString(s.Mine.Content), "\n", "\\n", -1) + "\",\"cid\":0,\"mine\":false,\"fromid\":\"" + s.Mine.Id + "\",\"timestamp\":" + pubtime + "}"
-
-						DB_RecordMsgs(accountname, s.Mine.Id, s.To.Id, DB_IndexCJKText(strings.Replace(html.EscapeString(s.Mine.Content), "\n", "\\n", -1), segmenter), string(r.Data), "friend", pubtime)
-
-					} else {
-						msgstr = "{\"username\":\"" + s.Mine.Username + "\",\"groupname\":\"" + s.To.Groupname + "\",\"avatar\":\"" + s.Mine.Avatar + "\",\"id\":\"" + s.To.Id + "\",\"type\":\"group\",\"content\":\"" + strings.Replace(html.EscapeString(s.Mine.Content), "\n", "\\n", -1) + "\",\"cid\":0,\"mine\":false,\"fromid\":\"" + s.Mine.Id + "\",\"timestamp\":" + pubtime + ",\"name\":\"" + s.To.Name + "\"}"
-						DB_RecordMsgs(accountname, s.Mine.Id, s.To.Id, DB_IndexCJKText(strings.Replace(html.EscapeString(s.Mine.Content), "\n", "\\n", -1), segmenter), string(r.Data), "group", pubtime)
-
-					}
-
-					_, err = ws.Write([]byte(msgstr))
-
-					//fmt.Println("msgdto:" + s.To.Id + "::" + msgstr)
-					if err != nil {
-						fmt.Println(err)
-					}
-				}
-			} else {
-				//_, err = ws.Write(r.Data)
-				if sigVerify {
-					DB_RecordActiveInfo(accountname, msg.Account)
-				}
-
 			}
-		} else { //Record msgs out
 
+		}
+
+		if msg.Account == accountname { //Record msgs out
 			fmt.Println("self ping:" + string(r.Data))
 
 			if sigVerify {
 				DB_RecordActiveInfo(accountname, msg.Account)
 			}
-
 		}
-		//	}
+		//}
 
 	}
 	//ws.Close()
@@ -306,7 +343,10 @@ func WebSocket_handleChatMsg(message iriswebsocket.Message, nsConn *iriswebsocke
 
 	fmt.Println("full body:" + msgBody)
 
-	if strings.Contains(msgBody, "sername") {
+	//get proxy messages
+	if strings.Contains(msgBody, "\"Body\":\"online\"") {
+		//send signed "Get" message
+		//err = sh.PubSubPublish(MyNodeConfig.PubsubProxy, rawMSG)
 		//return
 	}
 
@@ -665,6 +705,31 @@ func MSG_GetIPFSFile(ctx iris.Context) {
 	if err != nil {
 		fmt.Println("Delete downloaded file failed.", err)
 	}
+}
+
+//get the last msg's timestamp
+func MSG_GetLatestMSGTimestamp(accountname string) string {
+	dbpath := "./data/accounts/" + accountname + "/chaet.db"
+	db, err := sql.Open("sqlite", dbpath)
+	checkError(err)
+	sql_check := "SELECT pubtime FROM msgs ORDER BY pubtime DESC LIMIT 1"
+	rows, err := db.Query(sql_check)
+	checkError(err)
+
+	lastactive := "000000000000000"
+
+	for rows.Next() {
+		err = rows.Scan(&lastactive)
+	}
+	checkError(err)
+
+	return lastactive
+
+}
+
+//check the msg status of the sent message
+func MSG_CheckMSGStatus(receipt ReceiptMSG) {
+
 }
 
 //Get the secret key of each group, the length MUST be 16, 24 or 32
