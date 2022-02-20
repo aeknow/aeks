@@ -165,7 +165,11 @@ func PubSub_ProxyListening(channel, accountname string, signAccount account.Acco
 
 	//send an online signal to the msg proxy
 	//{"Account":"ak_xxxxx","LastMsg":"13982817272","Sig":"abcdefr"}
-	err = sh.PubSubPublish(MyNodeConfig.PubsubProxy, "{\"Account\":\""+accountname+"\",\"LastMsg\":\""+lastmsg+"\",\"Sig\":\""+signed+"\"}")
+	//err = sh.PubSubPublish(MyNodeConfig.PubsubProxy, "{\"Account\":\""+accountname+"\",\"LastMsg\":\""+lastmsg+"\",\"Sig\":\""+signed+"\"}")
+
+	//{sig:ddd,body:XXX,account:ak_xxx,mtype:xxx}
+	err = sh.PubSubPublish(MyNodeConfig.PubsubProxy, "{\"Signature\":\""+signed+"\",\"Body\":\""+lastmsg+"\",\"Body\":\""+lastmsg+"\",\"Mtype\":\"getproxyed\"}")
+
 	checkError(err)
 
 	if err != nil {
@@ -257,14 +261,20 @@ func PubSub_Listening(channel, accountname string, signAccount account.Account) 
 				fmt.Println(err)
 			}
 			fmt.Println("got receipt: " + string(r.Data))
-			//check the sent message status
+			//check the sent message status,update the database
 			MSG_CheckMSGStatus(receipt)
 		}
 
+		//update active message
 		if msg.Mtype == "ping" {
 			if sigVerify {
 				DB_RecordActiveInfo(accountname, msg.Account)
 			}
+		}
+
+		//check and send proxyed message
+		if msg.Mtype == "getproxyed" {
+
 		}
 
 		//if !strings.Contains(string(r.Data), accountname) {
