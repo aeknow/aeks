@@ -214,6 +214,7 @@ func httpGet(url string) string {
 func IPFSAPIPost(data, postfunc, accountname string) string {
 	//MyNodeConfig := DB_GetConfigs()
 	request, _ := http.NewRequest("POST", MyNodeConfig.IPFSAPI+"/api/"+postfunc, strings.NewReader(data))
+	fmt.Println(MyNodeConfig.IPFSAPI + "/api/" + postfunc)
 	request.Header.Add("content-type", "application/json")
 	resp, err := http.DefaultClient.Do(request)
 	if err != nil {

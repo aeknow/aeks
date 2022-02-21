@@ -7,9 +7,11 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <title>{{.PageTitle}} - AEKs</title> 
     <meta name="description" content="{{.PageDescription}}">  
+    <link rel="stylesheet" href="/views/layim/dist/css/layui.css">
     <link rel="stylesheet" href="/views/editor.md/examples/css/style.css" />
     <link rel="stylesheet" href="/views/editor.md/css/editormd.css" />
     <link rel="stylesheet" href="/themes/mainroad/css/style.css">
+    
 
     <link rel="shortcut icon" href="/favicon.ico">
 

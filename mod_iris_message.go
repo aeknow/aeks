@@ -100,7 +100,8 @@ func Chaet_UI(ctx iris.Context) {
 	//fmt.Println("en: " + encrypted)
 	//fmt.Println("de: " + MSG_OpenGroupMSG("123", encrypted))
 
-	ctx.View("mainroad/client.php", PageChat{Account: accountname, PageTitle: "Chaet"})
+	ctx.View("mainroad/chaet_mobile.php", PageChat{Account: accountname, PageTitle: "Chaet"})
+	//ctx.View("mainroad/client.php", PageChat{Account: accountname, PageTitle: "Chaet"})
 }
 
 func Chaet_SignJson(ctx iris.Context) {
@@ -131,13 +132,13 @@ func PubSub_StartListen(accountname string, signAccount account.Account) {
 			fmt.Fprintf(os.Stderr, "error: %s", err)
 		} else {
 			fmt.Println("IPFS booted, " + cid)
-			goto Loop
+			goto StartPubsubSystem
 		}
 
 		time.Sleep(time.Duration(1) * time.Second)
 	}
 
-Loop:
+StartPubsubSystem:
 	fmt.Println("Start listening channels...")
 	//start message listening
 	go PubSub_Listening(accountname, accountname, signAccount)
@@ -149,17 +150,19 @@ Loop:
 	if MSG_AmIProxy(accountname) {
 		go PubSub_ProxyListening(MyNodeConfig.PubsubProxy, accountname, signAccount)
 	}
+	go PubSub_PeeringSystem()
+}
 
-	///ip4/104.156.239.14/udp/4001/quic/p2p/12D3KooWEwbBdqgotFPBN6ik8SrN1hyYZjxzbKo3Dme1JDJ22dzN
-	//curl -X POST "http://127.0.0.1:5001/api/v0/swarm/peering/add?arg=<address>"
-	IPFSAPIPost("", "v0/swarm/peering?add=/ip4/104.156.239.14/udp/4001/quic/p2p/12D3KooWEwbBdqgotFPBN6ik8SrN1hyYZjxzbKo3Dme1JDJ22dzN", accountname)
-
+//Add stable nodes to sub peering system raise the robustness of the whole network
+func PubSub_PeeringSystem() {
+	fmt.Println("Sub peering system..." + IPFSAPIPost("", "v0/swarm/peering/add?arg=/ip4/104.156.239.14/udp/4001/quic/p2p/12D3KooWEwbBdqgotFPBN6ik8SrN1hyYZjxzbKo3Dme1JDJ22dzN", ""))
 }
 
 //start listening a single channel, decode&process the messages
 func PubSub_ProxyListening(channel, accountname string, signAccount account.Account) {
 	sh := shell.NewShell(MyNodeConfig.IPFSAPI)
 	sub, err := sh.PubSubSubscribe(channel)
+
 	lastmsg := MSG_GetLatestMSGTimestamp(accountname)
 	signed := base64.StdEncoding.EncodeToString(signAccount.Sign([]byte(lastmsg)))
 
@@ -173,7 +176,7 @@ func PubSub_ProxyListening(channel, accountname string, signAccount account.Acco
 	checkError(err)
 
 	if err != nil {
-		fmt.Println("Sub message error", err)
+		fmt.Println("Pub message error", err)
 	}
 
 	for {
@@ -805,7 +808,7 @@ func DB_GetUnreadMsgs(accountname string, message iriswebsocket.Message, nsConn 
 	dbpath := "./data/accounts/" + accountname + "/chaet.db"
 	db, err := sql.Open("sqlite", dbpath)
 	checkError(err)
-	sql_check := "SELECT lastactive FROM users WHERE id='" + accountname + "'"
+	sql_check := "SELECT timestamp FROM msgs WHERE id='" + accountname + "'"
 	rows, err := db.Query(sql_check)
 	checkError(err)
 
