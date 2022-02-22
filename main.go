@@ -109,6 +109,8 @@ func main() {
 	app.Post("/uploadfile", MSG_UploadFile)
 	app.Get("/getipfsfile", MSG_GetIPFSFile)
 
+	app.Get("/friendslist", Chaet_WebGetFriendsList)
+
 	ws := websocket.New(websocket.DefaultGorillaUpgrader, websocket.Events{
 		websocket.OnNativeMessage: func(nsConn *websocket.NSConn, msg websocket.Message) error {
 			//fmt.Printf("Server got: %s from [%s]", msg.Body, nsConn.Conn.ID())
