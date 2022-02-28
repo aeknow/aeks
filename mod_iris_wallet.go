@@ -1160,6 +1160,9 @@ CREATE TABLE if not exists "config"(
 	sql_init = `INSERT INTO config(item,value) VALUES('Theme','aeknow');`
 	db.Exec(sql_init)
 
+	sql_init = `INSERT INTO config(item,value) VALUES('Avatar','QmR3AmaREUvuPauo5wA1esBDckHH7BbnL7d7n5SEcvUpKY');`
+	db.Exec(sql_init)
+
 	db.Close()
 
 	//create logs database
@@ -1228,6 +1231,7 @@ CREATE TABLE if not exists "users"(
 "isfriend" bool NULL,
 "status" TEXT NULL,
 "groupname" TEXT NULL,
+"groupid" INTEGER NULL,
 "aens" TEXT NULL,
 "description" TEXT NULL,
 "remark" TEXT NULL
@@ -1435,6 +1439,8 @@ func DB_GetConfigItem(accountname, item string) string {
 	value := "NULL"
 	if FileExist(dbpath) {
 		sql_query := "SELECT value FROM config WHERE item='" + item + "'"
+
+		fmt.Println(dbpath + sql_query)
 
 		rows, err := db.Query(sql_query)
 		checkError(err)

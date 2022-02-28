@@ -83,6 +83,20 @@ type ReceiptMSG struct {
 	Receipt string
 }
 
+type UserInfo struct {
+	Username    string
+	Id          string
+	Avatar      string
+	Sign        string
+	Lastactive  string
+	IsFriend    string
+	Status      string
+	GroupName   string
+	AENS        string
+	Description string
+	Remark      string
+}
+
 func Chaet_UI(ctx iris.Context) {
 
 	if !checkLogin(ctx) {
@@ -105,7 +119,7 @@ func Chaet_UI(ctx iris.Context) {
 	//fmt.Println("en: " + encrypted)
 	//fmt.Println("de: " + MSG_OpenGroupMSG("123", encrypted))
 	friendsList := Chaet_GetFriendsList(accountname)
-	ctx.View("mainroad/chaet_mobile.php", PageChat{Account: accountname, PageTitle: "Chaet", FriendsList: friendsList})
+	ctx.View("mainroad/chaet.php", PageChat{Account: accountname, PageTitle: "Chaet", FriendsList: friendsList})
 	//ctx.View("mainroad/client.php", PageChat{Account: accountname, PageTitle: "Chaet"})
 }
 
@@ -127,134 +141,75 @@ func Chaet_SignJson(ctx iris.Context) {
 }
 
 func Chaet_WebGetFriendsList(ctx iris.Context) {
+	accountname := SESS_GetAccountName(ctx)
 	var friendsList string
 	friendsList = `{
 		"code": 0
 		,"msg": ""
 		,"data": {
 		  "mine": {
-			"username": "Liu Yang"
-			,"id": "ak_bKVvB7iFJKuzH6EvpzLfWKFUpG3qFxUvj8eGwdkFEb7TCTwP8"
+			"username": "` + DB_GetConfigItem(accountname, "name") + `"
+			,"id": "` + DB_GetConfigItem(accountname, "pubkey") + `"
 			,"status": "online"
-			,"sign": "From the blockchain, to the blockchain. "
-			,"avatar": "http://127.0.0.1:8080/ipfs/QmR3AmaREUvuPauo5wA1esBDckHH7BbnL7d7n5SEcvUpKY"
+			,"sign": "` + DB_GetConfigItem(accountname, "AENS") + ` "
+			,"avatar": "/ipfs/` + DB_GetConfigItem(accountname, "Avatar") + `"
 		  }
-		  ,"friend": [{
-			"groupname": "AENS Boss"
-			,"id": 1
-			,"online": 2
-			,"list": [{
-			  "username": "Caigen"
-			  ,"id": "ak_fCCw1JEkvXdztZxk8FRGNAkvmArhVeow89e64yX4AxbCPrVh5"
-			  ,"avatar": "http://127.0.0.1:8080/ipfs/QmR3AmaREUvuPauo5wA1esBDckHH7BbnL7d7n5SEcvUpKY"
-			  ,"aens":"1.chain"
-			  ,"sign": "The biggest boss of AENS, AENS最大的老板"
-			},{
-			  "username": "疯子(7.chain)"
-			  ,"id": "108101"
-			  ,"avatar": "http://127.0.0.1:8080/ipfs/QmR3AmaREUvuPauo5wA1esBDckHH7BbnL7d7n5SEcvUpKY"
-			  ,"sign": "微电商达人"
-			},{
-			  "username": "刘少(liu.chain)"
-			  ,"id": "168168"
-			  ,"avatar": "http://127.0.0.1:8080/ipfs/QmR3AmaREUvuPauo5wA1esBDckHH7BbnL7d7n5SEcvUpKY"
-			  ,"sign": "让天下没有难写的代码"
-			  ,"status": "offline"
-			},{
-			  "username": "B.A.M(cryptopay.chain)"
-			  ,"id": "168168"
-			  ,"avatar": "http://tp4.sinaimg.cn/2145291155/180/5601307179/1"
-			  ,"sign": "让天下没有难写的代码"
-			  ,"status": "offline"
-			},{
-			  "username": "Blockcity(Blockcity.chain)"
-			  ,"id": "1681681"
-			  ,"avatar": "http://tp4.sinaimg.cn/2145291155/180/5601307179/1"
-			  ,"sign": "让天下没有难写的代码"
-			  ,"status": "offline"
-			},{
-			  "username": "善天(pay.chain)"
-			  ,"id": "1681683"
-			  ,"avatar": "http://tp4.sinaimg.cn/2145291155/180/5601307179/1"
-			  ,"sign": "让天下没有难写的代码"
-			  ,"status": "offline"
-			},{
-			  "username": "冠头(guantoulaoshi.chain)"
-			  ,"id": "1681683"
-			  ,"avatar": "http://tp4.sinaimg.cn/2145291155/180/5601307179/1"
-			  ,"sign": "让天下没有难写的代码"
-			  ,"status": "offline"
-			},{
-			  "username": "AE86(ae86.chain)"
-			  ,"id": "1681685"
-			  ,"avatar": "http://tp4.sinaimg.cn/2145291155/180/5601307179/1"
-			  ,"sign": "让天下没有难写的代码"
-			  ,"status": "offline"
-			},{
-			  "username": "Neverland"
-			  ,"id": "6666665"
-			  ,"avatar": "http://tp2.sinaimg.cn/1783286485/180/5677568891/1"
-			  ,"sign": "代码在囧途，也要写到底"
-			}]
-		  },{
-			"groupname": "AE大佬分组"
-			,"id": 2
-			,"online": 3
-			,"list": [{
-			  "username": "罗玉凤"
-			  ,"id": "121286"
-			  ,"avatar": "http://tp1.sinaimg.cn/1241679004/180/5743814375/0"
-			  ,"sign": "在自己实力不济的时候，不要去相信什么媒体和记者。他们不是善良的人，有时候候他们的采访对当事人而言就是陷阱"
-			},{
-			  "username": "长泽梓Azusa"
-			  ,"id": "100001222"
-			  ,"sign": "我是日本女艺人长泽あずさ"
-			  ,"avatar": "http://tva1.sinaimg.cn/crop.0.0.180.180.180/86b15b6cjw1e8qgp5bmzyj2050050aa8.jpg"
-			},{
-			  "username": "大鱼_MsYuyu"
-			  ,"id": "12123454"
-			  ,"avatar": "http://tp1.sinaimg.cn/5286730964/50/5745125631/0"
-			  ,"sign": "我瘋了！這也太準了吧  超級笑點低"
-			},{
-			  "username": "谢楠"
-			  ,"id": "10034001"
-			  ,"avatar": "http://tp4.sinaimg.cn/1665074831/180/5617130952/0"
-			  ,"sign": ""
-			},{
-			  "username": "柏雪近在它香"
-			  ,"id": "3435343"
-			  ,"avatar": "http://tp2.sinaimg.cn/2518326245/180/5636099025/0"
-			  ,"sign": ""
-			}]
-		  },{
-			"groupname": "AE大神"
-			,"id": 3
-			,"online": 1
-			,"list": [{
-			  "username": "林心如"
-			  ,"id": "76543"
-			  ,"avatar": "http://tp3.sinaimg.cn/1223762662/180/5741707953/0"
-			  ,"sign": "我爱贤心"
-			},{
-			  "username": "佟丽娅"
-			  ,"id": "4803920"
-			  ,"avatar": "http://tp4.sinaimg.cn/1345566427/180/5730976522/0"
-			  ,"sign": "我也爱贤心吖吖啊"
-			}]
-		  }]
-		  ,"group": [{
-			"groupname": "AENS群(aens.liuyang.chain)"
-			,"id": "group_bKVvB7iFJKuzH6EvpzLfWKFUpG3qFxUvj8eGwdkFEb7TCTwP8_1"
-			,"avatar": "http://tp2.sinaimg.cn/2211874245/180/40050524279/0"
-		  },{
-			"groupname": "AE学习交流"
-			,"id": "group_fCCw1JEkvXdztZxk8FRGNAkvmArhVeow89e64yX4AxbCPrVh5_2"
-			,"avatar": "http://tp2.sinaimg.cn/5488749285/50/5719808192/1"
-		  }]
+		  ,"friend": [`
+
+	dbpath := "./data/accounts/" + accountname + "/chaet.db"
+	db, err := sql.Open("sqlite", dbpath)
+	checkError(err)
+
+	sql_getgroups := "SELECT DISTINCT(groupname),groupid FROM users"
+	rows, err := db.Query(sql_getgroups)
+	checkError(err)
+	groupname := ""
+	idgroup := ""
+
+	for rows.Next() {
+		err = rows.Scan(&groupname, &idgroup)
+		sql_getgroupmembers := "SELECT username,id,avatar,sign,lastactive,groupid,aens FROM users WHERE groupname='" + groupname + "'"
+		rows1, err1 := db.Query(sql_getgroupmembers)
+		checkError(err1)
+		username := ""
+		id := ""
+		avatar := ""
+		sign := ""
+		lastactive := ""
+		groupid := ""
+		aens := ""
+		friendsList = friendsList + `{
+			"groupname": "` + groupname + `"
+			,"id": ` + idgroup + `
+			,"online": 9999
+			,"list": [`
+		for rows1.Next() {
+			err2 := rows1.Scan(&username, &id, &avatar, &sign, &lastactive, &groupid, &aens)
+			checkError(err2)
+			friendsList = friendsList + `[{
+				"username": "` + username + `"
+				,"id": "` + id + `"
+				,"avatar": "` + avatar + `"
+				,"aens":"` + aens + `"
+				,"sign": "` + sign + `"
+			  },`
+		}
+		friendsList = friendsList + `]`
+		friendsList = strings.Replace(friendsList, ",]", "", -1)
+		friendsList = friendsList + `},`
+	}
+	friendsList = friendsList + `]`
+	friendsList = strings.Replace(friendsList, ",]", "", -1)
+
+	friendsList = friendsList + `]
+		  ,"group": [`
+
+	friendsList = friendsList +
+		`]
 		}
 	  }
 	  `
-
+	db.Close()
 	//returnStr := strings.Replace(friendsList, "\\\"", "\"", 0)
 	//returnStr = strings.Replace(returnStr, "\t", "", 0)
 
