@@ -19,7 +19,8 @@
                     if (!/^http(s*):\/\//.test(location.href)) {
                         //alert('请部署到localhost');
                     }
-
+                    
+                   
                     var lockReconnect = false;
                     var socket;
                     var loc = window.location, wsUrl; 
@@ -103,7 +104,7 @@
 
                             //初始化接口
                             init: {
-                                url: '/views/layim/sample/json/getList.json',
+                                url: '/friendslist',
                                 data: {}
                             }
 
