@@ -125,7 +125,9 @@ func Chaet_UI(ctx iris.Context) {
 
 func Chaet_SignJson(ctx iris.Context) {
 	//accountname := SESS_GetAccountName(ctx)
-
+	if !checkLogin(ctx) {
+		ctx.Redirect("/")
+	}
 	body := ctx.FormValue("body")
 	MysignAccount := SESS_GetAccount(ctx)
 	signature := base64.StdEncoding.EncodeToString(MysignAccount.Sign([]byte(body)))
@@ -140,7 +142,11 @@ func Chaet_SignJson(ctx iris.Context) {
 
 }
 
+//get current user's friendslist
 func Chaet_WebGetFriendsList(ctx iris.Context) {
+	if !checkLogin(ctx) {
+		ctx.Redirect("/")
+	}
 	accountname := SESS_GetAccountName(ctx)
 	var friendsList string
 	friendsList = `{
@@ -149,7 +155,7 @@ func Chaet_WebGetFriendsList(ctx iris.Context) {
 		,"data": {
 		  "mine": {
 			"username": "` + DB_GetConfigItem(accountname, "name") + `"
-			,"id": "` + DB_GetConfigItem(accountname, "pubkey") + `"
+			,"id": "` + accountname + `"
 			,"status": "online"
 			,"sign": "` + DB_GetConfigItem(accountname, "AENS") + ` "
 			,"avatar": "/ipfs/` + DB_GetConfigItem(accountname, "Avatar") + `"
@@ -160,7 +166,7 @@ func Chaet_WebGetFriendsList(ctx iris.Context) {
 	db, err := sql.Open("sqlite", dbpath)
 	checkError(err)
 
-	sql_getgroups := "SELECT DISTINCT(groupname),groupid FROM users"
+	sql_getgroups := "SELECT DISTINCT(groupname),groupid FROM users WHERE isfriend ='yes'"
 	rows, err := db.Query(sql_getgroups)
 	checkError(err)
 	groupname := ""
@@ -168,7 +174,11 @@ func Chaet_WebGetFriendsList(ctx iris.Context) {
 
 	for rows.Next() {
 		err = rows.Scan(&groupname, &idgroup)
+		//get friends
 		sql_getgroupmembers := "SELECT username,id,avatar,sign,lastactive,groupid,aens FROM users WHERE groupname='" + groupname + "'"
+		fmt.Println(sql_getgroupmembers)
+		fmt.Println(groupname, idgroup)
+
 		rows1, err1 := db.Query(sql_getgroupmembers)
 		checkError(err1)
 		username := ""
@@ -178,6 +188,7 @@ func Chaet_WebGetFriendsList(ctx iris.Context) {
 		lastactive := ""
 		groupid := ""
 		aens := ""
+
 		friendsList = friendsList + `{
 			"groupname": "` + groupname + `"
 			,"id": ` + idgroup + `
@@ -186,7 +197,7 @@ func Chaet_WebGetFriendsList(ctx iris.Context) {
 		for rows1.Next() {
 			err2 := rows1.Scan(&username, &id, &avatar, &sign, &lastactive, &groupid, &aens)
 			checkError(err2)
-			friendsList = friendsList + `[{
+			friendsList = friendsList + `{
 				"username": "` + username + `"
 				,"id": "` + id + `"
 				,"avatar": "` + avatar + `"
@@ -194,27 +205,48 @@ func Chaet_WebGetFriendsList(ctx iris.Context) {
 				,"sign": "` + sign + `"
 			  },`
 		}
+
 		friendsList = friendsList + `]`
-		friendsList = strings.Replace(friendsList, ",]", "", -1)
+		friendsList = strings.Replace(friendsList, ",]", "]", -1)
 		friendsList = friendsList + `},`
 	}
 	friendsList = friendsList + `]`
-	friendsList = strings.Replace(friendsList, ",]", "", -1)
+	friendsList = strings.Replace(friendsList, ",]", "]", -1)
 
-	friendsList = friendsList + `]
+	friendsList = friendsList + `
 		  ,"group": [`
+	//get groups
+	sql_getgrouplist := "SELECT groupname,id,avatar,aens,description FROM groups"
+	rows2, err := db.Query(sql_getgrouplist)
+	checkError(err)
+
+	ggroupname := ""
+	gid := ""
+	gavatar := ""
+	gaens := ""
+	gdescription := ""
+	for rows2.Next() {
+		err = rows2.Scan(&ggroupname, &gid, &gavatar, &gaens, &gdescription)
+		checkError(err)
+
+		friendsList = friendsList + `{
+			"groupname": "` + ggroupname + `"
+			,"id": "` + gid + `"
+			,"avatar": "` + gavatar + `"
+			,"aens":"` + gaens + `"
+			,"sign": "` + gdescription + `"
+		  },`
+	}
+	friendsList = friendsList + `]`
+	friendsList = strings.Replace(friendsList, ",]", "]", -1)
 
 	friendsList = friendsList +
-		`]
+		`
 		}
 	  }
 	  `
 	db.Close()
-	//returnStr := strings.Replace(friendsList, "\\\"", "\"", 0)
-	//returnStr = strings.Replace(returnStr, "\t", "", 0)
 
-	//fmt.Println(friendsList)
-	//return template.HTML(returnStr)
 	ctx.Writef(friendsList)
 }
 
