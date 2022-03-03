@@ -1687,7 +1687,7 @@ func AENS_GetData(ctx iris.Context) {
 	}
 
 	if AENS_needUpdate(aensname, theIPFS, theBlock_height) {
-		fileUrl := MyNodeConfig.IPFSNode + "/" + "ipfs/" + theIPFS
+		fileUrl := MyNodeConfig.IPFSNode + "/ipfs/" + theIPFS
 		//fmt.Println(theAccount + "=>" + theIPFS)
 		// Get the data
 		resp, err := http.Get(fileUrl)

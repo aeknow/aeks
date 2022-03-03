@@ -110,6 +110,7 @@ func main() {
 	app.Get("/getipfsfile", MSG_GetIPFSFile)
 
 	app.Get("/friendslist", Chaet_WebGetFriendsList)
+	app.Get("/groupmemberslist", Chaet_WebGetGroupMembers)
 
 	ws := websocket.New(websocket.DefaultGorillaUpgrader, websocket.Events{
 		websocket.OnNativeMessage: func(nsConn *websocket.NSConn, msg websocket.Message) error {
