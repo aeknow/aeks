@@ -259,7 +259,8 @@ func Chaet_WebGetGroupMembers(ctx iris.Context) {
 	}
 
 	accountname := SESS_GetAccountName(ctx)
-	groupid := ctx.URLParam("groupid")
+	groupid := ctx.GetCookie("groupid")
+	//fmt.Println("group:" + groupid)
 
 	dbpath := "./data/accounts/" + accountname + "/chaet.db"
 	db, err := sql.Open("sqlite", dbpath)
@@ -279,6 +280,8 @@ func Chaet_WebGetGroupMembers(ctx iris.Context) {
 	if members != "" {
 		url := MyNodeConfig.IPFSNode + "/ipfs/" + members
 		GroupMembers = httpGet(url)
+	} else {
+		fmt.Println("Get members from IPFS network failed.")
 	}
 
 	db.Close()
