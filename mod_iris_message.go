@@ -288,97 +288,6 @@ func Chaet_WebGetGroupMembers(ctx iris.Context) {
 	ctx.Writef(GroupMembers)
 }
 
-func Chaet_GetFriendsList(ctx iris.Context) {
-
-	//accountname := SESS_GetAccountName(ctx)
-	groupid := ctx.URLParam("groupid")
-
-	fmt.Println("groupid: " + groupid)
-
-	var friendsList string
-	friendsList = `{
-		"code": 0
-		,"msg": ""
-		,"data": {
-		  "owner": {
-			"username": "贤心"
-			,"id": "100001"
-			,"avatar": "http://tp1.sinaimg.cn/1571889140/180/40030060651/1"
-			,"sign": "这些都是测试数据，实际使用请严格按照该格式返回"
-		  }
-		  ,"members": 12
-		  ,"list": [{
-			"username": "贤心"
-			,"id": "100001"
-			,"avatar": "http://tp1.sinaimg.cn/1571889140/180/40030060651/1"
-			,"sign": "这些都是测试数据，实际使用请严格按照该格式返回"
-		  },{
-			"username": "Z_子晴"
-			,"id": "108101"
-			,"avatar": "http://tva3.sinaimg.cn/crop.0.0.512.512.180/8693225ajw8f2rt20ptykj20e80e8weu.jpg"
-			,"sign": "微电商达人"
-		  },{
-			"username": "Caigen"
-			,"id": "ak_fCCw1JEkvXdztZxk8FRGNAkvmArhVeow89e64yX4AxbCPrVh5"
-			,"avatar": "http://127.0.0.1:8080/ipfs/QmR3AmaREUvuPauo5wA1esBDckHH7BbnL7d7n5SEcvUpKY"
-			,"sign": ""
-		  },{
-			"username": "马小云"
-			,"id": "168168"
-			,"avatar": "http://tp4.sinaimg.cn/2145291155/180/5601307179/1"
-			,"sign": "让天下没有难写的代码"
-		  },{
-			"username": "徐小峥"
-			,"id": "666666"
-			,"avatar": "http://tp2.sinaimg.cn/1783286485/180/5677568891/1"
-			,"sign": "代码在囧途，也要写到底"
-		  },{
-			"username": "罗玉凤"
-			,"id": "121286"
-			,"avatar": "http://tp1.sinaimg.cn/1241679004/180/5743814375/0"
-			,"sign": "在自己实力不济的时候，不要去相信什么媒体和记者。他们不是善良的人，有时候候他们的采访对当事人而言就是陷阱"
-		  },{
-			"username": "长泽梓Azusa"
-			,"id": "100001222"
-			,"avatar": "http://tva1.sinaimg.cn/crop.0.0.180.180.180/86b15b6cjw1e8qgp5bmzyj2050050aa8.jpg"
-			,"sign": "我是日本女艺人长泽あずさ"
-		  },{
-			"username": "大鱼_MsYuyu"
-			,"id": "12123454"
-			,"avatar": "http://tp1.sinaimg.cn/5286730964/50/5745125631/0"
-			,"sign": "我瘋了！這也太準了吧  超級笑點低"
-		  },{
-			"username": "谢楠"
-			,"id": "10034001"
-			,"avatar": "http://tp4.sinaimg.cn/1665074831/180/5617130952/0"
-			,"sign": ""
-		  },{
-			"username": "柏雪近在它香"
-			,"id": "3435343"
-			,"avatar": "http://tp2.sinaimg.cn/2518326245/180/5636099025/0"
-			,"sign": ""
-		  },{
-			"username": "林心如"
-			,"id": "76543"
-			,"avatar": "http://tp3.sinaimg.cn/1223762662/180/5741707953/0"
-			,"sign": "我爱贤心"
-		  },{
-			"username": "佟丽娅"
-			,"id": "4803920"
-			,"avatar": "http://tp4.sinaimg.cn/1345566427/180/5730976522/0"
-			,"sign": "我也爱贤心吖吖啊"
-		  }]
-		}
-	  }
-	  `
-
-	//returnStr := strings.Replace(friendsList, "\\\"", "\"", 0)
-	//returnStr = strings.Replace(returnStr, "\t", "", 0)
-
-	//fmt.Println(friendsList)
-	ctx.Writef(friendsList)
-}
-
 //Start listening the pubsub channels, for the whole message system.
 func PubSub_StartListen(accountname string, signAccount account.Account) {
 	fmt.Println("Check IPFS status...")
@@ -397,18 +306,38 @@ func PubSub_StartListen(accountname string, signAccount account.Account) {
 	}
 
 StartPubsubSystem:
+	go PubSub_PeeringSystem() //Start sub peering system
+
 	fmt.Println("Start listening channels...")
 	//start message listening
 	go PubSub_Listening(accountname, accountname, signAccount)
-	go PubSub_Listening("ak_public", accountname, signAccount)                                                 //test channel
-	go PubSub_Listening("group_bKVvB7iFJKuzH6EvpzLfWKFUpG3qFxUvj8eGwdkFEb7TCTwP8_1", accountname, signAccount) //test group channel
-	go PubSub_Listening("group_fCCw1JEkvXdztZxk8FRGNAkvmArhVeow89e64yX4AxbCPrVh5_2", accountname, signAccount) //test group channel
+	go PubSub_Listening("ak_public", accountname, signAccount) //public channel
+
+	dbpath := "./data/accounts/" + accountname + "/chaet.db"
+	db, err := sql.Open("sqlite", dbpath)
+
+	sql_getgroups := "SELECT DISTINCT(id) FROM groups"
+	rows, err := db.Query(sql_getgroups)
+	checkError(err)
+
+	var group string
+	for rows.Next() {
+		err = rows.Scan(&group)
+		checkError(err)
+		go PubSub_Listening(group, accountname, signAccount)
+		go PubSub_Listening(group, accountname, signAccount)
+	}
+
+	db.Close()
+
+	//go PubSub_Listening("group_bKVvB7iFJKuzH6EvpzLfWKFUpG3qFxUvj8eGwdkFEb7TCTwP8_1", accountname, signAccount) //test group channel
+	//go PubSub_Listening("group_fCCw1JEkvXdztZxk8FRGNAkvmArhVeow89e64yX4AxbCPrVh5_2", accountname, signAccount) //test group channel
 
 	//If I am acting as a proxy, start listening the proxy channel
 	if MSG_AmIProxy(accountname) {
 		go PubSub_ProxyListening(MyNodeConfig.PubsubProxy, accountname, signAccount)
 	}
-	go PubSub_PeeringSystem()
+
 }
 
 //Add stable nodes to sub peering system raise the robustness of the whole network
