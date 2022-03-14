@@ -1217,7 +1217,7 @@ CREATE TABLE if not exists "logs"(
 	dbpath = "file:./data/accounts/" + pubkey + "/chaet.db?auto_vacuum=1"
 	db, _ = sql.Open("sqlite", dbpath)
 	//Create main data table for messages,body for full text search
-	sql_msg := `CREATE VIRTUAL TABLE msgs USING fts5(fromid, toid, body,raw,mtype, pubtime);`
+	sql_msg := `CREATE VIRTUAL TABLE msgs USING fts5(fromid, toid, body,raw,mtype, pubtime, receipt);`
 	db.Exec(sql_msg)
 
 	sql_user := `

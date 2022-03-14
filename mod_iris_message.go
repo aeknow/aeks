@@ -445,14 +445,14 @@ func PubSub_Listening(channel, accountname string, signAccount account.Account) 
 		}
 
 		if msg.Mtype == "receipt" {
-			var receipt ReceiptMSG
+			var receipt Msg
 			err = json.Unmarshal(r.Data, &receipt)
 			if err != nil {
 				fmt.Println(err)
 			}
 			fmt.Println("got receipt: " + string(r.Data))
 			//check the sent message status,update the database
-			MSG_CheckMSGStatus(receipt)
+			MSG_CheckMSGStatus(receipt, accountname)
 		}
 
 		//update active message
@@ -932,8 +932,13 @@ func MSG_GetLatestMSGTimestamp(accountname string) string {
 }
 
 //check the msg status of the sent message
-func MSG_CheckMSGStatus(receipt ReceiptMSG) {
-
+func MSG_CheckMSGStatus(receipt Msg, accountname string) {
+	dbpath := "./data/accounts/" + accountname + "/chaet.db"
+	db, err := sql.Open("sqlite", dbpath)
+	checkError(err)
+	sql_update := "UPDATE msgs set receipt='" + receipt.Account + "' WHERE pubtime='" + receipt.Body + "'"
+	db.Exec(sql_update)
+	fmt.Println("Update msg status: \n" + sql_update)
 }
 
 //Get the secret key of each group, the length MUST be 16, 24 or 32
