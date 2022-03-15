@@ -444,7 +444,7 @@ func PubSub_Listening(channel, accountname string, signAccount account.Account) 
 			fmt.Println("MSG UN-VERIFIED")
 		}
 
-		if msg.Mtype == "receipt" {
+		if msg.Mtype == "receipt" { //update receipt status
 			var receipt Msg
 			err = json.Unmarshal(r.Data, &receipt)
 			if err != nil {
@@ -452,7 +452,18 @@ func PubSub_Listening(channel, accountname string, signAccount account.Account) 
 			}
 			fmt.Println("got receipt: " + string(r.Data))
 			//check the sent message status,update the database
-			MSG_CheckMSGStatus(receipt, accountname)
+			MSG_UpdateReceiptStatus(receipt, accountname)
+		}
+
+		if msg.Mtype == "proxyed" { //update receipt status
+			var receipt Msg
+			err = json.Unmarshal(r.Data, &receipt)
+			if err != nil {
+				fmt.Println(err)
+			}
+			fmt.Println("got receipt: " + string(r.Data))
+			//check the sent message status,update the database
+			MSG_UpdateProxyedStatus(receipt, accountname)
 		}
 
 		//update active message
@@ -595,7 +606,9 @@ func WebSocket_handleChatMsg(message iriswebsocket.Message, nsConn *iriswebsocke
 				DB_RecordMsgs(accountname, s.Mine.Id, s.To.Id, DB_IndexCJKText(strings.Replace(html.EscapeString(s.Mine.Content), "\n", "\\n", -1), segmenter), msgBody, "friend", pubtime)
 
 				if MSG_CheckProxy(accountname, s.Mine.Id, s.To.Id) {
-					err = sh.PubSubPublish(MyNodeConfig.PubsubProxy, s.To.Id+":"+rawMSG)
+					//TODO:signature?
+					proxyMsg := "{\"Signature\":\"\",\"Body\":\"" + s.To.Id + "::" + rawMSG + "\",\"Account\":\"" + s.Mine.Id + "\",\"Mtype\":\"proxy\"}"
+					err = sh.PubSubPublish(MyNodeConfig.PubsubProxy, proxyMsg)
 				}
 			}
 
@@ -932,13 +945,23 @@ func MSG_GetLatestMSGTimestamp(accountname string) string {
 }
 
 //check the msg status of the sent message
-func MSG_CheckMSGStatus(receipt Msg, accountname string) {
+func MSG_UpdateReceiptStatus(receipt Msg, accountname string) {
 	dbpath := "./data/accounts/" + accountname + "/chaet.db"
 	db, err := sql.Open("sqlite", dbpath)
 	checkError(err)
 	sql_update := "UPDATE msgs set receipt='" + receipt.Account + "' WHERE pubtime='" + receipt.Body + "'"
 	db.Exec(sql_update)
 	fmt.Println("Update msg status: \n" + sql_update)
+}
+
+//check the proxyed msg status of the sent message
+func MSG_UpdateProxyedStatus(receipt Msg, accountname string) {
+	dbpath := "./data/accounts/" + accountname + "/chaet.db"
+	db, err := sql.Open("sqlite", dbpath)
+	checkError(err)
+	sql_update := "UPDATE msgs set receipt='proxyed' WHERE pubtime='" + receipt.Body + "'"
+	db.Exec(sql_update)
+	fmt.Println("Update msg proxyed status: \n" + sql_update)
 }
 
 //Get the secret key of each group, the length MUST be 16, 24 or 32
