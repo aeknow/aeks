@@ -606,9 +606,11 @@ func WebSocket_handleChatMsg(message iriswebsocket.Message, nsConn *iriswebsocke
 				DB_RecordMsgs(accountname, s.Mine.Id, s.To.Id, DB_IndexCJKText(strings.Replace(html.EscapeString(s.Mine.Content), "\n", "\\n", -1), segmenter), msgBody, "friend", pubtime)
 
 				if MSG_CheckProxy(accountname, s.Mine.Id, s.To.Id) {
-					//TODO:signature?
-					proxyMsg := "{\"Signature\":\"\",\"Body\":\"" + s.To.Id + "::" + rawMSG + "\",\"Account\":\"" + s.Mine.Id + "\",\"Mtype\":\"proxy\"}"
-					err = sh.PubSubPublish(MyNodeConfig.PubsubProxy, proxyMsg)
+					//if proxy, check and send the msg to proxy pub
+					MSG_CheckMSGStatus(strconv.FormatUint(s.To.Timestamp, 10), accountname)
+
+					//proxyMsg := "{\"Signature\":\"\",\"Body\":\"" + s.To.Id + "::" + rawMSG + "\",\"Account\":\"" + s.Mine.Id + "\",\"Mtype\":\"proxy\"}"
+					//err = sh.PubSubPublish(MyNodeConfig.PubsubProxy, proxyMsg)
 				}
 			}
 
@@ -952,6 +954,29 @@ func MSG_UpdateReceiptStatus(receipt Msg, accountname string) {
 	sql_update := "UPDATE msgs set receipt='" + receipt.Account + "' WHERE pubtime='" + receipt.Body + "'"
 	db.Exec(sql_update)
 	fmt.Println("Update msg status: \n" + sql_update)
+}
+
+//check the sent msg's status
+func MSG_CheckMSGStatus(pubtime, accountname string) {
+	time.Sleep(time.Duration(3) * time.Second) //sleep 3s before check
+	sh := shell.NewShell(MyNodeConfig.IPFSAPI)
+
+	dbpath := "./data/accounts/" + accountname + "/chaet.db"
+	db, err := sql.Open("sqlite", dbpath)
+	checkError(err)
+	sql_check := "SELECT raw,toid FROM msgs WHERE pubtime='" + pubtime + "' AND mtype='friend' AND receipt is NULL"
+	rows, err := db.Query(sql_check)
+	checkError(err)
+	var raw, toid string
+	for rows.Next() {
+		err = rows.Scan(&raw, &toid)
+		rawMSG := MSG_SealTo(toid, raw)
+		//if there is no receipt, send the msg to proxy pub
+		proxyMsg := "{\"Signature\":\"\",\"Body\":\"" + toid + "::" + rawMSG + "\",\"Account\":\"" + accountname + "\",\"Mtype\":\"proxy\"}"
+		err = sh.PubSubPublish(MyNodeConfig.PubsubProxy, proxyMsg)
+	}
+	checkError(err)
+
 }
 
 //check the proxyed msg status of the sent message
