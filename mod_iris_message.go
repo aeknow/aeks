@@ -372,13 +372,32 @@ func PubSub_ProxyListening(channel, accountname string, signAccount account.Acco
 			fmt.Println("Message error", err)
 		}
 
+		var msg Msg
+		err = json.Unmarshal([]byte(r.Data), &msg)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		theSig, _ := base64.StdEncoding.DecodeString(msg.Signature)
+		//fmt.Println("Message base64 encoded msg:" + msg.Body + "\nSig:" + msg.Signature)
+
+		//if !strings.Contains(string(r.Data), "username") && !strings.Contains(string(r.Data), "Username") && !strings.Contains(string(r.Data), "groupname") {
+		sigVerify, err := account.Verify(msg.Account, []byte(msg.Body), theSig)
+
+		if sigVerify {
+			fmt.Println("proxy msg VERIFIED")
+		} else {
+			fmt.Println(err)
+			fmt.Println("proxy MSG UN-VERIFIED")
+		}
+
 		//put messages to proxy
-		if !strings.Contains(string(r.Data), "put") {
+		if strings.Contains(string(r.Data), "proxy") {
 
 		}
 
 		//get messages from proxy
-		if !strings.Contains(string(r.Data), "get") {
+		if strings.Contains(string(r.Data), "get") {
 
 		}
 
@@ -601,7 +620,6 @@ func WebSocket_handleChatMsg(message iriswebsocket.Message, nsConn *iriswebsocke
 			if msg.Mtype == "private" {
 				//sealed with the target user's channel accounts and record to the database
 				rawMSG := MSG_SealTo(s.To.Id, msgBody)
-				//fmt.Println(msgBody)
 				err = sh.PubSubPublish(s.To.Id, rawMSG)
 				DB_RecordMsgs(accountname, s.Mine.Id, s.To.Id, DB_IndexCJKText(strings.Replace(html.EscapeString(s.Mine.Content), "\n", "\\n", -1), segmenter), msgBody, "friend", pubtime)
 
@@ -970,12 +988,12 @@ func MSG_CheckMSGStatus(pubtime, accountname string) {
 	var raw, toid string
 	for rows.Next() {
 		err = rows.Scan(&raw, &toid)
+		checkError(err)
 		rawMSG := MSG_SealTo(toid, raw)
 		//if there is no receipt, send the msg to proxy pub
 		proxyMsg := "{\"Signature\":\"\",\"Body\":\"" + toid + "::" + rawMSG + "\",\"Account\":\"" + accountname + "\",\"Mtype\":\"proxy\"}"
 		err = sh.PubSubPublish(MyNodeConfig.PubsubProxy, proxyMsg)
 	}
-	checkError(err)
 
 }
 
