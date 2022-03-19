@@ -123,22 +123,36 @@ func Chaet_UI(ctx iris.Context) {
 	//ctx.View("mainroad/client.php", PageChat{Account: accountname, PageTitle: "Chaet"})
 }
 
+type SigMSG struct {
+	Signature string
+	Body      string
+}
+
 func Chaet_SignJson(ctx iris.Context) {
 	//accountname := SESS_GetAccountName(ctx)
 	if !checkLogin(ctx) {
 		ctx.Redirect("/")
 	}
 	body := ctx.FormValue("body")
+	to := ctx.FormValue("to")
+	mtype := ctx.FormValue("type")
+
+	//seal the messages from the beginning
+	if mtype == "friend" {
+		body = MSG_SealTo(to, body)
+	}
+
+	if mtype == "group" {
+		body = MSG_SealGroupMSG(to, body)
+	}
+
 	MysignAccount := SESS_GetAccount(ctx)
 	signature := base64.StdEncoding.EncodeToString(MysignAccount.Sign([]byte(body)))
+	var Siged SigMSG
+	Siged.Signature = signature
+	Siged.Body = body
 
-	//fmt.Println("string:" + body)
-
-	//fmt.Println("sig:" + signature)
-	ctx.HTML(signature)
-
-	//fmt.Println(c)
-	//ctx.JSON(c)
+	ctx.JSON(Siged)
 
 }
 
@@ -982,16 +996,16 @@ func MSG_CheckMSGStatus(pubtime, accountname string) {
 	dbpath := "./data/accounts/" + accountname + "/chaet.db"
 	db, err := sql.Open("sqlite", dbpath)
 	checkError(err)
-	sql_check := "SELECT raw,toid FROM msgs WHERE pubtime='" + pubtime + "' AND mtype='friend' AND receipt is NULL"
+	sql_check := "SELECT raw,toid,pubtime FROM msgs WHERE pubtime='" + pubtime + "' AND mtype='friend' AND receipt is NULL"
 	rows, err := db.Query(sql_check)
 	checkError(err)
 	var raw, toid string
 	for rows.Next() {
-		err = rows.Scan(&raw, &toid)
+		err = rows.Scan(&raw, &toid, &pubtime)
 		checkError(err)
 		rawMSG := MSG_SealTo(toid, raw)
 		//if there is no receipt, send the msg to proxy pub
-		proxyMsg := "{\"Signature\":\"\",\"Body\":\"" + toid + "::" + rawMSG + "\",\"Account\":\"" + accountname + "\",\"Mtype\":\"proxy\"}"
+		proxyMsg := "{\"Signature\":\"" + pubtime + "\",\"Body\":\"" + toid + "::" + rawMSG + "\",\"Account\":\"" + accountname + "\",\"Mtype\":\"proxy\"}"
 		err = sh.PubSubPublish(MyNodeConfig.PubsubProxy, proxyMsg)
 	}
 
