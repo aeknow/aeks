@@ -407,7 +407,7 @@ func PubSub_ProxyListening(channel, accountname string, signAccount account.Acco
 
 		//put messages to proxy
 		if strings.Contains(string(r.Data), "proxy") {
-
+			MSG_SaveProxyMSGToDB(string(r.Data))
 		}
 
 		//get messages from proxy
@@ -416,6 +416,11 @@ func PubSub_ProxyListening(channel, accountname string, signAccount account.Acco
 		}
 
 	}
+
+}
+
+//save proxy msg to db
+func MSG_SaveProxyMSGToDB(msg string) {
 
 }
 
@@ -519,6 +524,7 @@ func PubSub_Listening(channel, accountname string, signAccount account.Account) 
 
 			var s ChatMsg
 			bosyStr, _ := base64.StdEncoding.DecodeString(msg.Body)
+
 			err = json.Unmarshal(bosyStr, &s)
 			if err != nil {
 				fmt.Println(err)
@@ -641,8 +647,6 @@ func WebSocket_handleChatMsg(message iriswebsocket.Message, nsConn *iriswebsocke
 					//if proxy, check and send the msg to proxy pub
 					MSG_CheckMSGStatus(strconv.FormatUint(s.To.Timestamp, 10), accountname)
 
-					//proxyMsg := "{\"Signature\":\"\",\"Body\":\"" + s.To.Id + "::" + rawMSG + "\",\"Account\":\"" + s.Mine.Id + "\",\"Mtype\":\"proxy\"}"
-					//err = sh.PubSubPublish(MyNodeConfig.PubsubProxy, proxyMsg)
 				}
 			}
 
