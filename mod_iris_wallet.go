@@ -1257,6 +1257,22 @@ CREATE TABLE if not exists "groups"(
 	db.Exec(sql_group)
 	db.Close()
 
+	dbpath = "file:./data/accounts/" + pubkey + "/proxy.db?auto_vacuum=1"
+	db, _ = sql.Open("sqlite", dbpath)
+	//Create proxy data table f
+	sql_proxy := `
+CREATE TABLE if not exists "msgs"(
+"mid" INTEGER PRIMARY KEY AUTOINCREMENT,
+"body" TEXT NULL,
+"mtype" TEXT NULL,
+"toid" TEXT NULL,
+"fromid" TEXT NULL,
+"timestamp" TEXT NULL
+"remark" TEXT NULL
+);
+`
+	db.Exec(sql_proxy)
+	db.Close()
 }
 
 func DB_UpdateConfigs(pubkey, item, value string) {
