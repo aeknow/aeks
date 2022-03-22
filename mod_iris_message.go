@@ -400,19 +400,19 @@ func PubSub_ProxyListening(channel, accountname string, signAccount account.Acco
 
 		if sigVerify {
 			fmt.Println("proxy msg VERIFIED")
+			//put messages to proxy
+			if strings.Contains(string(r.Data), "proxy") {
+				MSG_SaveProxyMSGToDB(string(r.Data), accountname)
+			}
+
+			//get messages from proxy
+			if strings.Contains(string(r.Data), "get") {
+
+			}
+
 		} else {
 			fmt.Println(err)
 			fmt.Println("proxy MSG UN-VERIFIED")
-		}
-
-		//put messages to proxy
-		if strings.Contains(string(r.Data), "proxy") {
-			MSG_SaveProxyMSGToDB(string(r.Data))
-		}
-
-		//get messages from proxy
-		if strings.Contains(string(r.Data), "get") {
-
 		}
 
 	}
@@ -420,8 +420,13 @@ func PubSub_ProxyListening(channel, accountname string, signAccount account.Acco
 }
 
 //save proxy msg to db
-func MSG_SaveProxyMSGToDB(msg string) {
-
+func MSG_SaveProxyMSGToDB(msg, accountname string) {
+	dbpath := "./data/accounts/" + accountname + "/proxy.db"
+	db, err := sql.Open("sqlite", dbpath)
+	checkError(err)
+	//fromid ,toid,msgbody,timestamp,remark
+	//sql_insert := "INSERT INTO msgs(body,toid) VALUES('" + msg + "','" + toid + "')"
+	db.Close()
 }
 
 //start listening a single channel, decode&process the messages
