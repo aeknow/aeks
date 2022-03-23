@@ -43,6 +43,8 @@ type Msg struct {
 	Body      string
 	Account   string
 	Mtype     string
+	Timestamp string
+	Toid      string
 }
 
 type ChatMsg struct {
@@ -395,14 +397,13 @@ func PubSub_ProxyListening(channel, accountname string, signAccount account.Acco
 		theSig, _ := base64.StdEncoding.DecodeString(msg.Signature)
 		//fmt.Println("Message base64 encoded msg:" + msg.Body + "\nSig:" + msg.Signature)
 
-		//if !strings.Contains(string(r.Data), "username") && !strings.Contains(string(r.Data), "Username") && !strings.Contains(string(r.Data), "groupname") {
 		sigVerify, err := account.Verify(msg.Account, []byte(msg.Body), theSig)
 
 		if sigVerify {
 			fmt.Println("proxy msg VERIFIED")
 			//put messages to proxy
 			if strings.Contains(string(r.Data), "proxy") {
-				MSG_SaveProxyMSGToDB(string(r.Data), accountname)
+				MSG_SaveProxyMSGToDB(string(r.Data), accountname, msg)
 			}
 
 			//get messages from proxy
@@ -420,12 +421,27 @@ func PubSub_ProxyListening(channel, accountname string, signAccount account.Acco
 }
 
 //save proxy msg to db
-func MSG_SaveProxyMSGToDB(msg, accountname string) {
+func MSG_SaveProxyMSGToDB(msgbody, accountname string, msg Msg) {
 	dbpath := "./data/accounts/" + accountname + "/proxy.db"
 	db, err := sql.Open("sqlite", dbpath)
 	checkError(err)
-	//fromid ,toid,msgbody,timestamp,remark
-	//sql_insert := "INSERT INTO msgs(body,toid) VALUES('" + msg + "','" + toid + "')"
+	sql_check := "SELECT fromid FROM msgs WHERE timestamp='" + msg.Timestamp + "'"
+	rows, err := db.Query(sql_check)
+	checkError(err)
+
+	NeedInsert := true
+	for rows.Next() {
+		NeedInsert = false
+	}
+
+	//insert body,mtype,toid,fromid,timestamp
+	if NeedInsert {
+		sql_insert := "INSERT INTO msgs(body,mtype,toid,fromid,timestamp) VALUES('" + msgbody + "','" + msg.Mtype + "','" + msg.Toid + "','" + msg.Account + "','" + msg.Timestamp + "')" //, , ,
+		//fmt.Println(sql_insert)
+		_, err := db.Exec(sql_insert)
+		checkError(err)
+	}
+
 	db.Close()
 }
 

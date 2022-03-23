@@ -1267,7 +1267,8 @@ CREATE TABLE if not exists "msgs"(
 "mtype" TEXT NULL,
 "toid" TEXT NULL,
 "fromid" TEXT NULL,
-"timestamp" TEXT NULL
+"timestamp" TEXT NULL,
+"status" TEXT NULL,
 "remark" TEXT NULL
 );
 `
