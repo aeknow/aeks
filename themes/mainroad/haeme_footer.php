@@ -32,12 +32,12 @@
     }
     wsUrl += "//" + loc.host + "/websocket?user={{.Account}}";
 
-    function setCookie(cname, cvalue, exdays) {
-        var d = new Date();
-        d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
-        var expires = "expires=" + d.toGMTString();
-        document.cookie = cname + "=" + cvalue + "; " + expires;
-    }
+function setCookie(cname,cvalue,exdays){
+    var d = new Date();
+    d.setTime(d.getTime()+(exdays*24*60*60*1000));
+    var expires = "expires="+d.toGMTString();
+    document.cookie = cname+"="+cvalue+"; "+expires;
+}
     self.setInterval("heart()", 60000);
 
     function heart() {
@@ -56,7 +56,7 @@
                 var signature = httpRequest.responseText; //获取到服务端返回的数据
                 //console.log(signature);	
                 var mtype = 'ping';
-                socket.send('{"Signature":"' + signature + '","Body":"' + heartbeatStr + '","Account":"{{.Account}}","Mtype":"' + mtype + '"}');
+                socket.send('{"Signature":"' + signature + '","Body":"' + heartbeatStr + '","Account":"{{.Account}}","Mtype":"' + mtype + '","Timestamp":"'+timestamp+'"}');
                 //console.log('{"Signature":"'+signature+'","Body":"'+heartbeatStr+'","Account":"{{.Account}}"}');
                 // socket.send(JSON.stringify(data+":sig:"+json));
             }
@@ -240,23 +240,30 @@
             httpRequest.open('POST', '/signjson', true);
 
             httpRequest.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-            httpRequest.send('body=' + Base64.encode(JSON.stringify(data)));
+            httpRequest.send('body=' + Base64.encode(JSON.stringify(data))+'&to='+data.to.id+'&mtype='+data.to.type);
 
             /**
              * 获取数据后的处理程序
              */
             httpRequest.onreadystatechange = function() {
                 if (httpRequest.readyState == 4 && httpRequest.status == 200) {
-                    var signature = httpRequest.responseText;
-                    //console.log(signature);	
+					//var sigedtext=httpRequest.responseText;
+					console.log('sigedtext: '+httpRequest.responseText);
+					var siged=JSON.parse(httpRequest.responseText);
+					console.log('siged: '+siged);	
+                    var signature = siged.Signature
+                    
                     if ('groupname' in data.to) {
                         mtype = 'group';
                     } else {
                         mtype = 'private';
                     }
 
-                    socket.send('{"Signature":"' + signature + '","Body":"' + Base64.encode(JSON.stringify(data)) + '","Account":"{{.Account}}","Mtype":"' + mtype + '"}');
-                    console.log('{"Signature":"' + signature + '","Body":"' + Base64.encode(JSON.stringify(data)) + '","Account":"{{.Account}}","Mtype":"' + mtype + '"}');
+                    socket.send('{"Signature":"' + signature + '","Body":"' + siged.Body + '","Account":"{{.Account}}","Mtype":"' + mtype +  '","Timestamp":"'+data.to.timestamp+'","Toid":"'+data.to.id+'"}');
+                    console.log('{"Signature":"' + signature + '","Body":"' + siged.Body + '","Account":"{{.Account}}","Mtype":"' + mtype + '","Timestamp":"'+data.to.timestamp+'","Toid":"'+data.to.id+'"}');
+                  
+                   //socket.send('{"Signature":"' + signature + '","Body":"' + Base64.encode(JSON.stringify(data)) + '","Account":"{{.Account}}","Mtype":"' + mtype + '"}');
+                    //console.log('{"Signature":"' + signature + '","Body":"' + Base64.encode(JSON.stringify(data)) + '","Account":"{{.Account}}","Mtype":"' + mtype + '"}');
                     console.log(data);
 
                 }
@@ -271,7 +278,7 @@
         });
 
         //监听查看群员
-        layim.on('members', function(data) {
+        layim.on('members', function(data) {			
             console.log(data);
         });
 
@@ -285,8 +292,11 @@
                 //模拟标注好友状态
                 //layim.setChatStatus('<span style="color:#FF5722;">在线</span>');
             } else if (type === 'group') {
-                //set the current groupid for get groupmembers
-                setCookie("groupid", res.data.id, 365);
+                //基础配置
+               setCookie("groupid",res.data.id,365);
+			    
+
+               // console.log("Group cookie set");
 
                 //模拟系统消息
                 /*
@@ -321,6 +331,8 @@
 
 
     });
+    
+    
 </script>
 
 

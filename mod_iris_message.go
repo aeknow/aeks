@@ -430,6 +430,7 @@ func MSG_SaveProxyMSGToDB(msgbody, accountname string, msg Msg) {
 	checkError(err)
 
 	NeedInsert := true
+
 	for rows.Next() {
 		NeedInsert = false
 	}
