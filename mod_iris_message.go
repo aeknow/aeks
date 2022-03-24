@@ -137,7 +137,8 @@ func Chaet_SignJson(ctx iris.Context) {
 	}
 	body := ctx.FormValue("body")
 	to := ctx.FormValue("to")
-	mtype := ctx.FormValue("type")
+	mtype := ctx.FormValue("mtype")
+	fmt.Println("msg type:" + mtype + "\nto:" + to + "\nBody:" + body)
 
 	//seal the messages from the beginning
 	if mtype == "friend" {
@@ -153,6 +154,8 @@ func Chaet_SignJson(ctx iris.Context) {
 	var Siged SigMSG
 	Siged.Signature = signature
 	Siged.Body = body
+
+	fmt.Println("msg type:" + mtype + "\nsigned by:" + MysignAccount.Address + "\nBody:" + body)
 
 	ctx.JSON(Siged)
 
@@ -366,15 +369,15 @@ func PubSub_ProxyListening(channel, accountname string, signAccount account.Acco
 	sh := shell.NewShell(MyNodeConfig.IPFSAPI)
 	sub, err := sh.PubSubSubscribe(channel)
 
-	lastmsg := MSG_GetLatestMSGTimestamp(accountname)
-	signed := base64.StdEncoding.EncodeToString(signAccount.Sign([]byte(lastmsg)))
+	//lastmsg := MSG_GetLatestMSGTimestamp(accountname)
+	//signed := base64.StdEncoding.EncodeToString(signAccount.Sign([]byte(lastmsg)))
 
 	//send an online signal to the msg proxy
 	//{"Account":"ak_xxxxx","LastMsg":"13982817272","Sig":"abcdefr"}
 	//err = sh.PubSubPublish(MyNodeConfig.PubsubProxy, "{\"Account\":\""+accountname+"\",\"LastMsg\":\""+lastmsg+"\",\"Sig\":\""+signed+"\"}")
 
 	//{sig:ddd,body:XXX,account:ak_xxx,mtype:xxx}
-	err = sh.PubSubPublish(MyNodeConfig.PubsubProxy, "{\"Signature\":\""+signed+"\",\"Body\":\""+lastmsg+"\",\"Body\":\""+lastmsg+"\",\"Mtype\":\"getproxyed\"}")
+	//err = sh.PubSubPublish(MyNodeConfig.PubsubProxy, "{\"Signature\":\""+signed+"\",\"Body\":\""+lastmsg+"\",\"Body\":\""+lastmsg+"\",\"Mtype\":\"getproxyed\"}")
 
 	checkError(err)
 
@@ -395,7 +398,7 @@ func PubSub_ProxyListening(channel, accountname string, signAccount account.Acco
 		}
 
 		theSig, _ := base64.StdEncoding.DecodeString(msg.Signature)
-		//fmt.Println("Message base64 encoded msg:" + msg.Body + "\nSig:" + msg.Signature)
+		fmt.Println("Message base64 encoded msg:" + msg.Body + "\nSig:" + msg.Signature)
 
 		sigVerify, err := account.Verify(msg.Account, []byte(msg.Body), theSig)
 
@@ -404,6 +407,15 @@ func PubSub_ProxyListening(channel, accountname string, signAccount account.Acco
 			//put messages to proxy
 			if strings.Contains(string(r.Data), "proxy") {
 				MSG_SaveProxyMSGToDB(string(r.Data), accountname, msg)
+
+				//return proxyed receipt
+				t := time.Now()
+				timestamp := strconv.FormatInt(t.UTC().UnixNano(), 10)
+				signedtimestamp := base64.StdEncoding.EncodeToString(signAccount.Sign([]byte(msg.Timestamp)))
+				proxyedmsg := "{\"Signature\":\"" + signedtimestamp + "\",\"Body\":\"" + msg.Timestamp + "\",\"Mtype\":\"proxyed\",\"Timestamp\":\"" + timestamp + "\"}"
+
+				err = sh.PubSubPublish(msg.Account, proxyedmsg)
+				checkError(err)
 			}
 
 			//get messages from proxy
@@ -662,6 +674,7 @@ func WebSocket_handleChatMsg(message iriswebsocket.Message, nsConn *iriswebsocke
 			if msg.Mtype == "private" {
 				//sealed with the target user's channel accounts and record to the database
 				rawMSG := MSG_SealTo(s.To.Id, msgBody)
+				fmt.Println("seal msg and send to pubsub")
 				err = sh.PubSubPublish(s.To.Id, rawMSG)
 				DB_RecordMsgs(accountname, s.Mine.Id, s.To.Id, DB_IndexCJKText(strings.Replace(html.EscapeString(s.Mine.Content), "\n", "\\n", -1), segmenter), msgBody, "friend", pubtime)
 
