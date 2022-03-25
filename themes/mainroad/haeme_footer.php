@@ -53,7 +53,9 @@ function setCookie(cname,cvalue,exdays){
          */
         httpRequest.onreadystatechange = function() { //请求后的回调接口，可将请求成功后要执行的程序写在其中
             if (httpRequest.readyState == 4 && httpRequest.status == 200) { //验证请求是否发送成功
-                var signature = httpRequest.responseText; //获取到服务端返回的数据
+
+                var siged=JSON.parse(httpRequest.responseText);	
+                var signature = siged.Signature
                 //console.log(signature);	
                 var mtype = 'ping';
                 socket.send('{"Signature":"' + signature + '","Body":"' + heartbeatStr + '","Account":"{{.Account}}","Mtype":"' + mtype + '","Timestamp":"'+timestamp+'"}');
@@ -235,12 +237,23 @@ function setCookie(cname,cvalue,exdays){
             var To = data.to;
 
             data.to.timestamp = new Date().getTime();
+             var fd = new FormData()
+            fd.append('body', Base64.encode(JSON.stringify(data)));
+            fd.append('to', +data.to.id);
+            fd.append('mtype', +data.to.type);
+            
+            
             //Get the signature of the message
             var httpRequest = new XMLHttpRequest();
-            httpRequest.open('POST', '/signjson', true);
+            //httpRequest.open('POST', '/signjson', true);
 
+            
+           
+            var url='/signjson?body=' + Base64.encode(JSON.stringify(data))+'&to='+data.to.id+'&mtype='+data.to.type;
+            httpRequest.open('POST', url, true);
             httpRequest.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-            httpRequest.send('body=' + Base64.encode(JSON.stringify(data))+'&to='+data.to.id+'&mtype='+data.to.type);
+            //console.log(querystr);
+            httpRequest.send(null);
 
             /**
              * 获取数据后的处理程序
@@ -251,7 +264,7 @@ function setCookie(cname,cvalue,exdays){
 					console.log('sigedtext: '+httpRequest.responseText);
 					var siged=JSON.parse(httpRequest.responseText);
 					console.log('siged: '+siged);	
-                    var signature = siged.Signature
+                    
                     
                     if ('groupname' in data.to) {
                         mtype = 'group';
@@ -259,8 +272,8 @@ function setCookie(cname,cvalue,exdays){
                         mtype = 'private';
                     }
 
-                    socket.send('{"Signature":"' + signature + '","Body":"' + siged.Body + '","Account":"{{.Account}}","Mtype":"' + mtype +  '","Timestamp":"'+data.to.timestamp+'","Toid":"'+data.to.id+'"}');
-                    console.log('{"Signature":"' + signature + '","Body":"' + siged.Body + '","Account":"{{.Account}}","Mtype":"' + mtype + '","Timestamp":"'+data.to.timestamp+'","Toid":"'+data.to.id+'"}');
+                    socket.send('{"Signature":"' + siged.Signature + '","Body":"' +Base64.encode(JSON.stringify(data))  + '","Account":"{{.Account}}","Mtype":"' + mtype +  '","Timestamp":"'+data.to.timestamp+'","Toid":"'+data.to.id+'","Sealed":"'+siged.Body+'","Signature_seal":"'+siged.Signature_seal+'"}');
+                    console.log('{"Signature":"' + siged.Signature + '","Body":"' + Base64.encode(JSON.stringify(data))  + '","Account":"{{.Account}}","Mtype":"' + mtype + '","Timestamp":"'+data.to.timestamp+'","Toid":"'+data.to.id+'","Sealed":"'+siged.Body+'","Signature_seal":"'+siged.Signature_seal+'"}');
                   
                    //socket.send('{"Signature":"' + signature + '","Body":"' + Base64.encode(JSON.stringify(data)) + '","Account":"{{.Account}}","Mtype":"' + mtype + '"}');
                     //console.log('{"Signature":"' + signature + '","Body":"' + Base64.encode(JSON.stringify(data)) + '","Account":"{{.Account}}","Mtype":"' + mtype + '"}');

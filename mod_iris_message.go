@@ -39,12 +39,14 @@ type PageChat struct {
 }
 
 type Msg struct {
-	Signature string
-	Body      string
-	Account   string
-	Mtype     string
-	Timestamp string
-	Toid      string
+	Signature      string
+	Body           string
+	Account        string
+	Mtype          string
+	Timestamp      string
+	Toid           string
+	Sealed         string
+	Signature_seal string
 }
 
 type ChatMsg struct {
@@ -126,8 +128,9 @@ func Chaet_UI(ctx iris.Context) {
 }
 
 type SigMSG struct {
-	Signature string
-	Body      string
+	Signature      string
+	Body           string
+	Signature_seal string
 }
 
 func Chaet_SignJson(ctx iris.Context) {
@@ -135,11 +138,13 @@ func Chaet_SignJson(ctx iris.Context) {
 	if !checkLogin(ctx) {
 		ctx.Redirect("/")
 	}
+	MysignAccount := SESS_GetAccount(ctx)
+
 	body := ctx.FormValue("body")
 	to := ctx.FormValue("to")
 	mtype := ctx.FormValue("mtype")
 	fmt.Println("msg type:" + mtype + "\nto:" + to + "\nBody:" + body)
-
+	signature := base64.StdEncoding.EncodeToString(MysignAccount.Sign([]byte(body)))
 	//seal the messages from the beginning
 	if mtype == "friend" {
 		body = MSG_SealTo(to, body)
@@ -149,11 +154,11 @@ func Chaet_SignJson(ctx iris.Context) {
 		body = MSG_SealGroupMSG(to, body)
 	}
 
-	MysignAccount := SESS_GetAccount(ctx)
-	signature := base64.StdEncoding.EncodeToString(MysignAccount.Sign([]byte(body)))
+	signature_seal := base64.StdEncoding.EncodeToString(MysignAccount.Sign([]byte(body)))
 	var Siged SigMSG
 	Siged.Signature = signature
 	Siged.Body = body
+	Siged.Signature_seal = signature_seal
 
 	fmt.Println("msg type:" + mtype + "\nsigned by:" + MysignAccount.Address + "\nBody:" + body)
 
@@ -412,8 +417,8 @@ func PubSub_ProxyListening(channel, accountname string, signAccount account.Acco
 				t := time.Now()
 				timestamp := strconv.FormatInt(t.UTC().UnixNano(), 10)
 				signedtimestamp := base64.StdEncoding.EncodeToString(signAccount.Sign([]byte(msg.Timestamp)))
-				proxyedmsg := "{\"Signature\":\"" + signedtimestamp + "\",\"Body\":\"" + msg.Timestamp + "\",\"Mtype\":\"proxyed\",\"Timestamp\":\"" + timestamp + "\"}"
-
+				proxyedmsg := "{\"Signature\":\"" + signedtimestamp + "\",\"Body\":\"" + msg.Timestamp + "\",\"Account\":\"" + signAccount.Address + "\",\"Mtype\":\"proxyed\",\"Timestamp\":\"" + timestamp + "\"}"
+				//var msg Msg
 				err = sh.PubSubPublish(msg.Account, proxyedmsg)
 				checkError(err)
 			}
@@ -667,7 +672,7 @@ func WebSocket_handleChatMsg(message iriswebsocket.Message, nsConn *iriswebsocke
 				DB_RecordMsgs(accountname, s.Mine.Id, s.To.Id, DB_IndexCJKText(strings.Replace(html.EscapeString(s.Mine.Content), "\n", "\\n", -1), segmenter), msgBody, "group", pubtime)
 
 				if MSG_CheckProxy(accountname, s.Mine.Id, s.To.Id) {
-					err = sh.PubSubPublish(MyNodeConfig.PubsubProxy, s.To.Id+":"+rawMSG)
+					//err = sh.PubSubPublish(MyNodeConfig.PubsubProxy, s.To.Id+":"+rawMSG)
 				}
 			}
 
@@ -680,7 +685,7 @@ func WebSocket_handleChatMsg(message iriswebsocket.Message, nsConn *iriswebsocke
 
 				if MSG_CheckProxy(accountname, s.Mine.Id, s.To.Id) {
 					//if proxy, check and send the msg to proxy pub
-					MSG_CheckMSGStatus(strconv.FormatUint(s.To.Timestamp, 10), accountname)
+					go MSG_CheckMSGStatus(strconv.FormatUint(s.To.Timestamp, 10), accountname)
 
 				}
 			}
@@ -1042,10 +1047,23 @@ func MSG_CheckMSGStatus(pubtime, accountname string) {
 	for rows.Next() {
 		err = rows.Scan(&raw, &toid, &pubtime)
 		checkError(err)
-		rawMSG := MSG_SealTo(toid, raw)
+		var msg Msg
+
+		err := json.Unmarshal([]byte(raw), &msg)
+		if err != nil {
+			fmt.Println("umarshal err: ")
+			fmt.Println(err)
+		}
+
+		msg.Body = msg.Sealed
+		msg.Signature = msg.Signature_seal
+		msg.Mtype = "proxy"
+
+		proxyMsg, err := json.Marshal(msg)
+		//rawMSG := MSG_SealTo(toid, raw)
 		//if there is no receipt, send the msg to proxy pub
-		proxyMsg := "{\"Signature\":\"" + pubtime + "\",\"Body\":\"" + toid + "::" + rawMSG + "\",\"Account\":\"" + accountname + "\",\"Mtype\":\"proxy\"}"
-		err = sh.PubSubPublish(MyNodeConfig.PubsubProxy, proxyMsg)
+		//proxyMsg := "{\"Signature\":\"" + pubtime + "\",\"Body\":\"" + toid + "::" + rawMSG + "\",\"Account\":\"" + accountname + "\",\"Mtype\":\"proxy\"}"
+		err = sh.PubSubPublish(MyNodeConfig.PubsubProxy, string(proxyMsg))
 	}
 
 }
