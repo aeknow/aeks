@@ -360,6 +360,7 @@ StartPubsubSystem:
 	//If I am acting as a proxy, start listening the proxy channel
 	if MSG_AmIProxy(accountname) {
 		go PubSub_ProxyListening(MyNodeConfig.PubsubProxy, accountname, signAccount)
+		go Pubsub_GetProxyed(MyNodeConfig.PubsubProxy, accountname, signAccount)
 	}
 
 }
@@ -369,20 +370,19 @@ func PubSub_PeeringSystem() {
 	fmt.Println("Sub peering system..." + IPFSAPIPost("", "v0/swarm/peering/add?arg=/ip4/104.156.239.14/udp/4001/quic/p2p/12D3KooWEwbBdqgotFPBN6ik8SrN1hyYZjxzbKo3Dme1JDJ22dzN", ""))
 }
 
+//get proxyed msgs from the proxy node from the beginning
+func Pubsub_GetProxyed(channel, accountname string, signAccount account.Account) {
+	lastmsg := MSG_GetLatestMSGTimestamp(accountname)
+	signed := base64.StdEncoding.EncodeToString(signAccount.Sign([]byte(lastmsg)))
+	sh := shell.NewShell(MyNodeConfig.IPFSAPI)
+	err := sh.PubSubPublish(MyNodeConfig.PubsubProxy, "{\"Signature\":\""+signed+"\",\"Body\":\""+lastmsg+"\",\"Account\":\""+accountname+"\",\"Mtype\":\"getproxyed\"}")
+	checkError(err)
+}
+
 //start listening a single channel, decode&process the messages
 func PubSub_ProxyListening(channel, accountname string, signAccount account.Account) {
 	sh := shell.NewShell(MyNodeConfig.IPFSAPI)
 	sub, err := sh.PubSubSubscribe(channel)
-
-	//lastmsg := MSG_GetLatestMSGTimestamp(accountname)
-	//signed := base64.StdEncoding.EncodeToString(signAccount.Sign([]byte(lastmsg)))
-
-	//send an online signal to the msg proxy
-	//{"Account":"ak_xxxxx","LastMsg":"13982817272","Sig":"abcdefr"}
-	//err = sh.PubSubPublish(MyNodeConfig.PubsubProxy, "{\"Account\":\""+accountname+"\",\"LastMsg\":\""+lastmsg+"\",\"Sig\":\""+signed+"\"}")
-
-	//{sig:ddd,body:XXX,account:ak_xxx,mtype:xxx}
-	//err = sh.PubSubPublish(MyNodeConfig.PubsubProxy, "{\"Signature\":\""+signed+"\",\"Body\":\""+lastmsg+"\",\"Body\":\""+lastmsg+"\",\"Mtype\":\"getproxyed\"}")
 
 	checkError(err)
 
@@ -410,7 +410,8 @@ func PubSub_ProxyListening(channel, accountname string, signAccount account.Acco
 		if sigVerify {
 			fmt.Println("proxy msg VERIFIED")
 			//put messages to proxy
-			if strings.Contains(string(r.Data), "proxy") {
+			//	if strings.Contains(string(r.Data), "proxy") {
+			if msg.Mtype == "proxy" {
 				MSG_SaveProxyMSGToDB(string(r.Data), accountname, msg)
 
 				//return proxyed receipt
@@ -423,9 +424,9 @@ func PubSub_ProxyListening(channel, accountname string, signAccount account.Acco
 				checkError(err)
 			}
 
-			//get messages from proxy
-			if strings.Contains(string(r.Data), "get") {
-
+			//get messages from proxy database
+			if msg.Mtype == "getproxyed" {
+				go MSG_GetProxyMSGFromDB(string(r.Data), accountname, msg)
 			}
 
 		} else {
@@ -434,6 +435,10 @@ func PubSub_ProxyListening(channel, accountname string, signAccount account.Acco
 		}
 
 	}
+
+}
+
+func MSG_GetProxyMSGFromDB(msgbody, accountname string, msg Msg) {
 
 }
 
