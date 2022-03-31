@@ -44,10 +44,17 @@ function setCookie(cname,cvalue,exdays){
         var timestamp = new Date().getTime();
         var heartbeatStr = "ping" + timestamp;
         var httpRequest = new XMLHttpRequest();
-        httpRequest.open('POST', '/signjson', true);
-        httpRequest.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+        
+         var url='/signjson?body=' + Base64.encode(heartbeatStr)+'&to=ping'+'&mtype=ping';
+            httpRequest.open('POST', url, true);
+            httpRequest.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+            //console.log(querystr);
+            httpRequest.send(null);
+            
+        //httpRequest.open('POST', '/signjson', true);
+        //httpRequest.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
         //	httpRequest.send('body='+Base64.encode(JSON.stringify(data)));
-        httpRequest.send('body=' + heartbeatStr);
+        //httpRequest.send('body=' + heartbeatStr);
         /**
          * 获取数据后的处理程序
          */
@@ -55,10 +62,12 @@ function setCookie(cname,cvalue,exdays){
             if (httpRequest.readyState == 4 && httpRequest.status == 200) { //验证请求是否发送成功
 
                 var siged=JSON.parse(httpRequest.responseText);	
-                var signature = siged.Signature
+                //var signature = siged.Signature
                 //console.log(signature);	
                 var mtype = 'ping';
-                socket.send('{"Signature":"' + signature + '","Body":"' + heartbeatStr + '","Account":"{{.Account}}","Mtype":"' + mtype + '","Timestamp":"'+timestamp+'"}');
+                socket.send('{"Signature":"' + siged.Signature + '","Body":"' + heartbeatStr + '","Account":"{{.Account}}","Mtype":"' + mtype + '","Timestamp":"'+timestamp+'"}');
+                //socket.send('{"Signature":"' + siged.Signature + '","Body":"' +Base64.encode(JSON.stringify(data))  + '","Account":"{{.Account}}","Mtype":"' + mtype +  '","Timestamp":"'+data.to.timestamp+'","Toid":"'+data.to.id+'","Sealed":"'+siged.Body+'","Signature_seal":"'+siged.Signature_seal+'"}');
+
                 //console.log('{"Signature":"'+signature+'","Body":"'+heartbeatStr+'","Account":"{{.Account}}"}');
                 // socket.send(JSON.stringify(data+":sig:"+json));
             }

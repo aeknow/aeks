@@ -133,18 +133,32 @@ type SigMSG struct {
 	Signature_seal string
 }
 
+//sign the message
 func Chaet_SignJson(ctx iris.Context) {
 	//accountname := SESS_GetAccountName(ctx)
 	if !checkLogin(ctx) {
 		ctx.Redirect("/")
 	}
-	MysignAccount := SESS_GetAccount(ctx)
-
 	body := ctx.FormValue("body")
 	to := ctx.FormValue("to")
 	mtype := ctx.FormValue("mtype")
-	fmt.Println("msg type:" + mtype + "\nto:" + to + "\nBody:" + body)
+
+	//check if the message is encodeed by base64, precaution of tx sign attack
+	decodeedBody, _ := base64.StdEncoding.DecodeString(body)
+	if !strings.Contains(string(decodeedBody), "username") && !strings.Contains(string(decodeedBody), "ping") {
+		fmt.Println("Bad sign body")
+		ctx.Redirect("/")
+	}
+
+	MysignAccount := SESS_GetAccount(ctx)
+	//fmt.Println("msg type:" + mtype + "\nto:" + to + "\nBody:" + body)
 	signature := base64.StdEncoding.EncodeToString(MysignAccount.Sign([]byte(body)))
+
+	if mtype == "ping" {
+		body = string(decodeedBody)
+		signature = base64.StdEncoding.EncodeToString(MysignAccount.Sign([]byte(body)))
+	}
+
 	//seal the messages from the beginning
 	if mtype == "friend" {
 		body = MSG_SealTo(to, body)
@@ -155,15 +169,15 @@ func Chaet_SignJson(ctx iris.Context) {
 	}
 
 	signature_seal := base64.StdEncoding.EncodeToString(MysignAccount.Sign([]byte(body)))
+
 	var Siged SigMSG
 	Siged.Signature = signature
 	Siged.Body = body
 	Siged.Signature_seal = signature_seal
 
-	fmt.Println("msg type:" + mtype + "\nsigned by:" + MysignAccount.Address + "\nBody:" + body)
+	//fmt.Println("msg type:" + mtype + "\nsigned by:" + MysignAccount.Address + "\nBody:" + body)
 
 	ctx.JSON(Siged)
-
 }
 
 //get current user's friendslist
@@ -442,7 +456,7 @@ func PubSub_ProxyListening(channel, accountname string, signAccount account.Acco
 }
 
 func MSG_GetProxyMSGFromDB(msgbody, accountname string, msg Msg) {
-
+	fmt.Println("Get msg for " + accountname + " from " + msg.Body)
 }
 
 //save proxy msg to db
