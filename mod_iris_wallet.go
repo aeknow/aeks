@@ -1448,6 +1448,7 @@ func DB_UpdateAccountName(pubkey, alias string) {
 	db.Close()
 }
 
+//get an account's config
 func DB_GetConfigItem(accountname, item string) string {
 	dbpath := "./data/accounts/" + accountname + "/config.db"
 	db, err := sql.Open("sqlite", dbpath)
@@ -1457,7 +1458,7 @@ func DB_GetConfigItem(accountname, item string) string {
 	if FileExist(dbpath) {
 		sql_query := "SELECT value FROM config WHERE item='" + item + "'"
 
-		fmt.Println(dbpath + sql_query)
+		//fmt.Println(dbpath + sql_query)
 
 		rows, err := db.Query(sql_query)
 		checkError(err)

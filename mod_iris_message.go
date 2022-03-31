@@ -360,8 +360,10 @@ StartPubsubSystem:
 	//If I am acting as a proxy, start listening the proxy channel
 	if MSG_AmIProxy(accountname) {
 		go PubSub_ProxyListening(MyNodeConfig.PubsubProxy, accountname, signAccount)
-		go Pubsub_GetProxyed(MyNodeConfig.PubsubProxy, accountname, signAccount)
 	}
+
+	//send a knock to the proxy node to get messages
+	go Pubsub_GetProxyed(MyNodeConfig.PubsubProxy, accountname, signAccount)
 
 }
 
@@ -372,6 +374,7 @@ func PubSub_PeeringSystem() {
 
 //get proxyed msgs from the proxy node from the beginning
 func Pubsub_GetProxyed(channel, accountname string, signAccount account.Account) {
+	fmt.Println("Sending knock knock to the proxy node...")
 	lastmsg := MSG_GetLatestMSGTimestamp(accountname)
 	signed := base64.StdEncoding.EncodeToString(signAccount.Sign([]byte(lastmsg)))
 	sh := shell.NewShell(MyNodeConfig.IPFSAPI)
@@ -383,7 +386,7 @@ func Pubsub_GetProxyed(channel, accountname string, signAccount account.Account)
 func PubSub_ProxyListening(channel, accountname string, signAccount account.Account) {
 	sh := shell.NewShell(MyNodeConfig.IPFSAPI)
 	sub, err := sh.PubSubSubscribe(channel)
-
+	fmt.Println("proxychannel:" + channel)
 	checkError(err)
 
 	if err != nil {
@@ -403,7 +406,7 @@ func PubSub_ProxyListening(channel, accountname string, signAccount account.Acco
 		}
 
 		theSig, _ := base64.StdEncoding.DecodeString(msg.Signature)
-		fmt.Println("Message base64 encoded msg:" + msg.Body + "\nSig:" + msg.Signature)
+		//fmt.Println("Message base64 encoded msg:" + msg.Body + "\nSig:" + msg.Signature + msg.Mtype)
 
 		sigVerify, err := account.Verify(msg.Account, []byte(msg.Body), theSig)
 
@@ -413,7 +416,6 @@ func PubSub_ProxyListening(channel, accountname string, signAccount account.Acco
 			//	if strings.Contains(string(r.Data), "proxy") {
 			if msg.Mtype == "proxy" {
 				MSG_SaveProxyMSGToDB(string(r.Data), accountname, msg)
-
 				//return proxyed receipt
 				t := time.Now()
 				timestamp := strconv.FormatInt(t.UTC().UnixNano(), 10)
@@ -426,6 +428,7 @@ func PubSub_ProxyListening(channel, accountname string, signAccount account.Acco
 
 			//get messages from proxy database
 			if msg.Mtype == "getproxyed" {
+				//fmt.Println(accountname + "===> getproxyed")
 				go MSG_GetProxyMSGFromDB(string(r.Data), accountname, msg)
 			}
 
@@ -973,7 +976,11 @@ func MSG_CheckProxy(accountname, fromid, toid string) bool {
 //Check if we should use the proxy mode for the offline messages
 func MSG_AmIProxy(accountname string) bool {
 	//TODO:proxy mode or offline mode
+	//fmt.Println(accountname + " proxy=>" + MyNodeConfig.PubsubProxy)
+	//if accountname == strings.Replace(MyNodeConfig.PubsubProxy, "proxy_", "ak_", -1) {
 	return true
+	//}
+	//return false
 }
 
 //Download ipfs files from chat or pages
