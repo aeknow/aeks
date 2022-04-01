@@ -185,6 +185,8 @@ func Chaet_WebGetFriendsList(ctx iris.Context) {
 	if !checkLogin(ctx) {
 		ctx.Redirect("/")
 	}
+	fmt.Println("getting friends lists...")
+
 	accountname := SESS_GetAccountName(ctx)
 	var friendsList string
 	friendsList = `{
@@ -214,8 +216,8 @@ func Chaet_WebGetFriendsList(ctx iris.Context) {
 		err = rows.Scan(&groupname, &idgroup)
 		//get friends
 		sql_getgroupmembers := "SELECT username,id,avatar,sign,lastactive,groupid,aens FROM users WHERE groupname='" + groupname + "'"
-		fmt.Println(sql_getgroupmembers)
-		fmt.Println(groupname, idgroup)
+		//fmt.Println(sql_getgroupmembers)
+		//fmt.Println(groupname, idgroup)
 
 		rows1, err1 := db.Query(sql_getgroupmembers)
 		checkError(err1)
@@ -455,8 +457,33 @@ func PubSub_ProxyListening(channel, accountname string, signAccount account.Acco
 
 }
 
+//get proxyed messages and send them to the requiring node
 func MSG_GetProxyMSGFromDB(msgbody, accountname string, msg Msg) {
+	sh := shell.NewShell(MyNodeConfig.IPFSAPI)
+
 	fmt.Println("Get msg for " + accountname + " from " + msg.Body)
+	dbpath := "./data/accounts/" + accountname + "/proxy.db"
+	db, err := sql.Open("sqlite", dbpath)
+	checkError(err)
+	sql_get := "SELECT body  FROM msgs WHERE timestamp>'" + msg.Timestamp + "' AND toid='" + accountname + "' AND status is NULL"
+
+	rows, err := db.Query(sql_get)
+	checkError(err)
+
+	var body string
+	for rows.Next() {
+		err = rows.Scan(&body)
+		checkError(err)
+
+		var msg Msg
+		err = json.Unmarshal([]byte(body), &msg)
+		checkError(err)
+
+		err = sh.PubSubPublish(accountname, body)
+		checkError(err)
+	}
+
+	db.Close()
 }
 
 //save proxy msg to db
@@ -464,7 +491,7 @@ func MSG_SaveProxyMSGToDB(msgbody, accountname string, msg Msg) {
 	dbpath := "./data/accounts/" + accountname + "/proxy.db"
 	db, err := sql.Open("sqlite", dbpath)
 	checkError(err)
-	sql_check := "SELECT fromid FROM msgs WHERE timestamp='" + msg.Timestamp + "'"
+	sql_check := "SELECT mid,body FROM msgs WHERE timestamp='" + msg.Timestamp + "'"
 	rows, err := db.Query(sql_check)
 	checkError(err)
 
@@ -563,6 +590,10 @@ func PubSub_Listening(channel, accountname string, signAccount account.Account) 
 			fmt.Println("got receipt: " + string(r.Data))
 			//check the sent message status,update the database
 			MSG_UpdateProxyedStatus(receipt, accountname)
+		}
+
+		if msg.Mtype == "proxy" { //msgs from proxy nodes
+
 		}
 
 		//update active message
