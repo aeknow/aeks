@@ -390,6 +390,7 @@ func PubSub_PeeringSystem() {
 
 //get proxyed msgs from the proxy node from the beginning
 func Pubsub_GetProxyed(channel, accountname string, signAccount account.Account) {
+	time.Sleep(time.Duration(3) * time.Second) //sleep 3s before check
 	fmt.Println("Sending knock knock to the proxy node...")
 	lastmsg := MSG_GetLatestMSGTimestamp(accountname)
 	signed := base64.StdEncoding.EncodeToString(signAccount.Sign([]byte(lastmsg)))
@@ -448,6 +449,11 @@ func PubSub_ProxyListening(channel, accountname string, signAccount account.Acco
 				go MSG_GetProxyMSGFromDB(string(r.Data), accountname, msg)
 			}
 
+			//check the receipt msg and record the status
+			if msg.Mtype == "receipt" {
+				MSG_UpdateProxyReceiptStatus(msg, accountname)
+			}
+
 		} else {
 			fmt.Println(err)
 			fmt.Println("proxy MSG UN-VERIFIED")
@@ -461,11 +467,11 @@ func PubSub_ProxyListening(channel, accountname string, signAccount account.Acco
 func MSG_GetProxyMSGFromDB(msgbody, accountname string, msg Msg) {
 	sh := shell.NewShell(MyNodeConfig.IPFSAPI)
 
-	fmt.Println("Get msg for " + accountname + " from " + msg.Body)
+	fmt.Println("Get msg for " + msg.Account + " from " + msg.Body)
 	dbpath := "./data/accounts/" + accountname + "/proxy.db"
 	db, err := sql.Open("sqlite", dbpath)
 	checkError(err)
-	sql_get := "SELECT body  FROM msgs WHERE timestamp>'" + msg.Timestamp + "' AND toid='" + accountname + "' AND status is NULL"
+	sql_get := "SELECT body  FROM msgs WHERE toid='" + msg.Account + "' AND status is NULL ORDER BY timestamp ASC"
 
 	rows, err := db.Query(sql_get)
 	checkError(err)
@@ -479,7 +485,7 @@ func MSG_GetProxyMSGFromDB(msgbody, accountname string, msg Msg) {
 		err = json.Unmarshal([]byte(body), &msg)
 		checkError(err)
 
-		err = sh.PubSubPublish(accountname, body)
+		err = sh.PubSubPublish(msg.Toid, body)
 		checkError(err)
 	}
 
@@ -592,10 +598,6 @@ func PubSub_Listening(channel, accountname string, signAccount account.Account) 
 			MSG_UpdateProxyedStatus(receipt, accountname)
 		}
 
-		if msg.Mtype == "proxy" { //msgs from proxy nodes
-
-		}
-
 		//update active message
 		if msg.Mtype == "ping" {
 			if sigVerify {
@@ -615,6 +617,7 @@ func PubSub_Listening(channel, accountname string, signAccount account.Account) 
 			//	if !strings.Contains(string(r.Data), "ping") {
 
 			var s ChatMsg
+			//decode encrypted body firstly
 			bosyStr, _ := base64.StdEncoding.DecodeString(msg.Body)
 
 			err = json.Unmarshal(bosyStr, &s)
@@ -642,6 +645,7 @@ func PubSub_Listening(channel, accountname string, signAccount account.Account) 
 					receiptMsg := "{\"Signature\":\"" + signature + "\",\"Body\":\"" + pubtime + "\",\"Account\":\"" + accountname + "\",\"Mtype\":\"receipt\"}"
 
 					err = sh.PubSubPublish(s.Mine.Id, MSG_SealTo(s.Mine.Id, receiptMsg)) //send the receipt of the msg
+
 					checkError(err)
 					DB_RecordMsgs(accountname, s.Mine.Id, s.To.Id, DB_IndexCJKText(strings.Replace(html.EscapeString(s.Mine.Content), "\n", "\\n", -1), segmenter), string(r.Data), "friend", pubtime)
 
@@ -653,12 +657,54 @@ func PubSub_Listening(channel, accountname string, signAccount account.Account) 
 
 				_, err = ws.Write([]byte(msgstr))
 
-				//fmt.Println("msgdto:" + s.To.Id + "::" + msgstr)
-				if err != nil {
-					fmt.Println(err)
-				}
+				checkError(err)
 			}
 
+		}
+
+		//msgs from proxy nodes
+		if msg.Mtype == "proxy" {
+			var s ChatMsg
+			bosyStr, _ := base64.StdEncoding.DecodeString(MSG_OpenMSG(msg.Body, signAccount))
+
+			err = json.Unmarshal(bosyStr, &s)
+			checkError(err)
+
+			fmt.Println("msgto:" + s.To.Id)
+			//if the msg is not in the db, then broadcast&save it
+			if !MSG_CheckMSGinDB(accountname, msg) {
+
+				msgstr := ""
+				pubtime := strconv.FormatInt(int64(s.To.Timestamp), 10)
+
+				if s.To.Groupname == "" { //private msg
+					msgstr = "{\"username\":\"" + s.Mine.Username + "\",\"avatar\":\"" + s.Mine.Avatar + "\",\"id\":\"" + s.Mine.Id + "\",\"type\":\"friend\",\"content\":\"" + strings.Replace(html.EscapeString(s.Mine.Content), "\n", "\\n", -1) + "\",\"cid\":0,\"mine\":false,\"fromid\":\"" + s.Mine.Id + "\",\"timestamp\":" + pubtime + "}"
+					//{sig:ddd,body:XXX,account:ak_xxx,mtype:xxx}
+					signature := base64.StdEncoding.EncodeToString(signAccount.Sign([]byte(pubtime)))
+
+					receiptMsg := "{\"Signature\":\"" + signature + "\",\"Body\":\"" + pubtime + "\",\"Account\":\"" + accountname + "\",\"Mtype\":\"receipt\"}"
+
+					err = sh.PubSubPublish(s.Mine.Id, MSG_SealTo(s.Mine.Id, receiptMsg)) //send the receipt of the msg
+					err = sh.PubSubPublish(MyNodeConfig.PubsubProxy, receiptMsg)         //send the receipt to the proxy node
+
+					checkError(err)
+					DB_RecordMsgs(accountname, s.Mine.Id, s.To.Id, DB_IndexCJKText(strings.Replace(html.EscapeString(s.Mine.Content), "\n", "\\n", -1), segmenter), string(r.Data), "friend", pubtime)
+
+				}
+				_, err = ws.Write([]byte(msgstr))
+
+				//fmt.Println("msgdto:" + s.To.Id + "::" + msgstr)
+				checkError(err)
+
+			} else {
+				pubtime := strconv.FormatInt(int64(s.To.Timestamp), 10)
+				signature := base64.StdEncoding.EncodeToString(signAccount.Sign([]byte(pubtime)))
+				receiptMsg := "{\"Signature\":\"" + signature + "\",\"Body\":\"" + pubtime + "\",\"Account\":\"" + accountname + "\",\"Mtype\":\"receipt\"}"
+
+				err = sh.PubSubPublish(MyNodeConfig.PubsubProxy, receiptMsg) //send the receipt to the proxy node
+
+				checkError(err)
+			}
 		}
 
 		if msg.Account == accountname { //Record msgs out
@@ -675,6 +721,25 @@ func PubSub_Listening(channel, accountname string, signAccount account.Account) 
 	}
 	//ws.Close()
 
+}
+
+//check if the message in local database
+func MSG_CheckMSGinDB(accountname string, msg Msg) bool {
+	//accountname := msg.Toid
+	dbpath := "./data/accounts/" + accountname + "/chaet.db"
+	db, err := sql.Open("sqlite", dbpath)
+	checkError(err)
+	sql_check := "SELECT body FROM msgs WHERE pubtime='" + msg.Timestamp + "'"
+	rows, err := db.Query(sql_check)
+	checkError(err)
+
+	IsInDB := false
+
+	for rows.Next() {
+		IsInDB = true
+	}
+
+	return IsInDB
 }
 
 //handle received websocket message,broadcast or send to pubsub
@@ -1087,6 +1152,16 @@ func MSG_UpdateReceiptStatus(receipt Msg, accountname string) {
 	sql_update := "UPDATE msgs set receipt='" + receipt.Account + "' WHERE pubtime='" + receipt.Body + "'"
 	db.Exec(sql_update)
 	fmt.Println("Update msg status: \n" + sql_update)
+}
+
+//update the proxyed msg status
+func MSG_UpdateProxyReceiptStatus(receipt Msg, accountname string) {
+	dbpath := "./data/accounts/" + accountname + "/proxy.db"
+	db, err := sql.Open("sqlite", dbpath)
+	checkError(err)
+	sql_update := "UPDATE msgs set status='" + receipt.Account + "' WHERE timestamp='" + receipt.Body + "'"
+	db.Exec(sql_update)
+	fmt.Println("Update proxy msg status: \n" + sql_update)
 }
 
 //check the sent msg's status
