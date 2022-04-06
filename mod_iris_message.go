@@ -467,7 +467,7 @@ func PubSub_ProxyListening(channel, accountname string, signAccount account.Acco
 func MSG_GetProxyMSGFromDB(msgbody, accountname string, msg Msg) {
 	sh := shell.NewShell(MyNodeConfig.IPFSAPI)
 
-	fmt.Println("Get msg for " + msg.Account + " from " + msg.Body)
+	fmt.Println("Get msg for " + msg.Account)
 	dbpath := "./data/accounts/" + accountname + "/proxy.db"
 	db, err := sql.Open("sqlite", dbpath)
 	checkError(err)
@@ -1208,6 +1208,13 @@ func MSG_UpdateProxyedStatus(receipt Msg, accountname string) {
 	sql_update := "UPDATE msgs set receipt='proxyed' WHERE pubtime='" + receipt.Body + "'"
 	db.Exec(sql_update)
 	fmt.Println("Update msg proxyed status: \n" + sql_update)
+}
+
+//The UI of managing social networks:chaet friends,haeme following...
+func MSG_ManageSocialNetworks_UI(ctx iris.Context) {
+	if !checkLogin(ctx) {
+		ctx.Redirect("/")
+	}
 }
 
 //Get the secret key of each group, the length MUST be 16, 24 or 32
